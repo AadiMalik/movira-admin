@@ -206,7 +206,7 @@ class PaymentController extends BaseController
 
             $user_wallet = auth()->user()->userWallet;
 
-            $wallet_balance = number_format($user_wallet->amount_balance,2);
+            $wallet_balance = number_format($user_wallet->amount_balance??0,2);
 
             $currency_code = auth()->user()->countryDetail->currency_code;
             $currency_symbol = auth()->user()->countryDetail->currency_symbol;
@@ -225,7 +225,7 @@ class PaymentController extends BaseController
 
             $driver_wallet = auth()->user()->driver->driverWallet;
 
-            $wallet_balance = $driver_wallet->amount_balance;
+            $wallet_balance = $driver_wallet->amount_balance??0;
 
             //$currency_code = auth()->user()->countryDetail->currency_code;
             //$currency_symbol = auth()->user()->countryDetail->currency_symbol;
@@ -250,7 +250,7 @@ class PaymentController extends BaseController
                 $wallet_balance = 0;
 
             } else {
-                $wallet_balance = $owner_wallet->amount_balance;
+                $wallet_balance = $owner_wallet->amount_balance??0;
 
             }
 
@@ -426,7 +426,7 @@ class PaymentController extends BaseController
             // $result = fractal($query, new WalletWithdrawalRequestsTransformer);
 
             $user_wallet = auth()->user()->userWallet;
-            $wallet_balance = $user_wallet->amount_balance;
+            $wallet_balance = $user_wallet->amount_balance??0;
 
 
         } elseif (access()->hasRole(Role::DRIVER)) {
@@ -442,7 +442,7 @@ class PaymentController extends BaseController
 
             $driver_wallet = auth()->user()->driver->driverWallet;
 
-            $wallet_balance = $driver_wallet->amount_balance;
+            $wallet_balance = $driver_wallet->amount_balance??0;
 
         } else {
 
@@ -457,7 +457,7 @@ class PaymentController extends BaseController
 
             $owner_wallet = auth()->user()->owner->ownerWalletDetail;
 
-            $wallet_balance = $owner_wallet->amount_balance;
+            $wallet_balance = $owner_wallet->amount_balance??0;
         }
 
         return response()->json(['success' => true, 'message' => 'withdrawal-requests-listed', 'withdrawal_history' => $result, 'wallet_balance' => $wallet_balance]);
@@ -489,7 +489,7 @@ class PaymentController extends BaseController
             $created_params['user_id'] = auth()->user()->id;
 
             $user_wallet = auth()->user()->userWallet;
-            $wallet_balance = $user_wallet->amount_balance;
+            $wallet_balance = $user_wallet->amount_balance??0;
 
             if ($wallet_balance <= 0) {
 
@@ -520,7 +520,7 @@ class PaymentController extends BaseController
 
             $driver_wallet = auth()->user()->driver->driverWallet;
 
-            $wallet_balance = $driver_wallet->amount_balance;
+            $wallet_balance = $driver_wallet->amount_balance??0;
 
             if ($wallet_balance <= 0) {
 
@@ -555,7 +555,7 @@ class PaymentController extends BaseController
 
             $owner_wallet = auth()->user()->owner->ownerWalletDetail;
 
-            $wallet_balance = $owner_wallet->amount_balance;
+            $wallet_balance = $owner_wallet->amount_balance??0;
 
             if ($wallet_balance <= 0) {
 
@@ -644,7 +644,7 @@ class PaymentController extends BaseController
 
         $minimum_wallet_amount = get_settings(Settings::MINIMUM_WALLET_AMOUNT_FOR_TRANSFER);
 
-        if ($user_wallet && $user_wallet->amount_balance < $minimum_wallet_amount) {
+        if ($user_wallet && !empty($user_wallet->amount_balance) && $user_wallet->amount_balance < $minimum_wallet_amount) {
 
             //Throw exception
             $this->throwCustomException('Insufficient balance to transfer money to wallet');
@@ -657,7 +657,7 @@ class PaymentController extends BaseController
 
         // Validate requested amount with current balance
 
-        if ($user_wallet->amount_balance < $amount_to_transfer) {
+        if (!empty($user_wallet->amount_balance) && $user_wallet->amount_balance < $amount_to_transfer) {
             // Throw exception
             $this->throwCustomException('Insufficient Balance');
         }
