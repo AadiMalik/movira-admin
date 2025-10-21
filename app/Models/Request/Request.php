@@ -19,7 +19,7 @@ use App\Models\Admin\Owner;
 
 class Request extends Model
 {
-    use UuidModel,SearchableTrait,HasActiveCompanyKey;
+    use UuidModel, SearchableTrait, HasActiveCompanyKey;
     /**
      * The table associated with the model.
      *
@@ -32,15 +32,81 @@ class Request extends Model
      *
      * @var array
      */
-    protected $fillable = ['request_number','is_later','user_id','driver_id','trip_start_time','arrived_at','accepted_at','completed_at','cancelled_at','is_driver_started','is_driver_arrived','is_trip_start','is_completed','is_cancelled','reason','cancel_method','total_distance','total_time','payment_opt','is_paid','user_rated','driver_rated','promo_id','timezone','unit','if_dispatch','zone_type_id','requested_currency_code','custom_reason','attempt_for_schedule','service_location_id','company_key','dispatcher_id','book_for_other_contact','book_for_other','ride_otp','is_rental','rental_package_id','is_out_station','request_eta_amount','is_surge_applied','owner_id','fleet_id','requested_currency_symbol','instant_ride','offerred_ride_fare','accepted_ride_fare','is_bid_ride'];
+    protected $fillable = [
+        'request_number',
+        'is_later',
+        'user_id',
+        'driver_id',
+        'trip_start_time',
+        'arrived_at',
+        'accepted_at',
+        'completed_at',
+        'cancelled_at',
+        'is_driver_started',
+        'is_driver_arrived',
+        'is_trip_start',
+        'is_completed',
+        'is_cancelled',
+        'reason',
+        'cancel_method',
+        'total_distance',
+        'total_time',
+        'payment_opt',
+        'is_paid',
+        'user_rated',
+        'driver_rated',
+        'promo_id',
+        'timezone',
+        'unit',
+        'if_dispatch',
+        'zone_type_id',
+        'requested_currency_code',
+        'custom_reason',
+        'attempt_for_schedule',
+        'service_location_id',
+        'company_key',
+        'dispatcher_id',
+        'book_for_other_contact',
+        'book_for_other',
+        'ride_otp',
+        'is_rental',
+        'rental_package_id',
+        'is_out_station',
+        'request_eta_amount',
+        'is_surge_applied',
+        'owner_id',
+        'fleet_id',
+        'requested_currency_symbol',
+        'instant_ride',
+        'offerred_ride_fare',
+        'accepted_ride_fare',
+        'is_bid_ride',
+        'customer_card_id',
+        'stripe_payment_intent_id'
+    ];
 
     /**
-    * The accessors to append to the model's array form.
-    *
-    * @var array
-    */
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
     protected $appends = [
-        'vehicle_type_name','pick_lat','pick_lng','drop_lat','drop_lng','pick_address','drop_address','converted_trip_start_time','converted_arrived_at','converted_accepted_at','converted_completed_at','converted_cancelled_at','converted_created_at','converted_updated_at','vehicle_type_image'
+
+        'vehicle_type_name',
+        'pick_lat',
+        'pick_lng',
+        'drop_lat',
+        'drop_lng',
+        'pick_address',
+        'drop_address',
+        'converted_trip_start_time',
+        'converted_arrived_at',
+        'converted_accepted_at',
+        'converted_completed_at',
+        'converted_cancelled_at',
+        'converted_created_at',
+        'converted_updated_at',
+        'vehicle_type_image'
     ];
     /**
      * The relationships that can be loaded with query string filtering includes.
@@ -48,7 +114,10 @@ class Request extends Model
      * @var array
      */
     public $includes = [
-        'driverDetail','userDetail','requestBill','requestStops'
+        'driverDetail',
+        'userDetail',
+        'requestBill',
+        'requestStops'
     ];
 
     public $sortable = ['trip_start_time', 'created_at', 'updated_at'];
@@ -65,7 +134,7 @@ class Request extends Model
 
     public function requestRating()
     {
-        return $this->hasMany(RequestRating::class, 'request_id','id');
+        return $this->hasMany(RequestRating::class, 'request_id', 'id');
     }
 
     /**
@@ -144,10 +213,10 @@ class Request extends Model
         return $this->belongsTo(ZoneTypePackage::class, 'zone_type_id', 'id');
     }
     /**
-    * Get request's pickup latitude.
-    *
-    * @return string
-    */
+     * Get request's pickup latitude.
+     *
+     * @return string
+     */
     public function getPickLatAttribute()
     {
         if (!$this->requestPlace()->exists()) {
@@ -156,10 +225,10 @@ class Request extends Model
         return $this->requestPlace->pick_lat;
     }
     /**
-    * Get request's pickup longitude.
-    *
-    * @return string
-    */
+     * Get request's pickup longitude.
+     *
+     * @return string
+     */
     public function getPickLngAttribute()
     {
         if (!$this->requestPlace()->exists()) {
@@ -168,10 +237,10 @@ class Request extends Model
         return $this->requestPlace->pick_lng;
     }
     /**
-    * Get request's drop latitude.
-    *
-    * @return string
-    */
+     * Get request's drop latitude.
+     *
+     * @return string
+     */
     public function getDropLatAttribute()
     {
         if (!$this->requestPlace()->exists()) {
@@ -180,10 +249,10 @@ class Request extends Model
         return $this->requestPlace->drop_lat;
     }
     /**
-    * Get request's drop longitude.
-    *
-    * @return string
-    */
+     * Get request's drop longitude.
+     *
+     * @return string
+     */
     public function getDropLngAttribute()
     {
         if (!$this->requestPlace()->exists()) {
@@ -192,10 +261,10 @@ class Request extends Model
         return $this->requestPlace->drop_lng;
     }
     /**
-    * Get request's pickup address.
-    *
-    * @return string
-    */
+     * Get request's pickup address.
+     *
+     * @return string
+     */
     public function getPickAddressAttribute()
     {
         if (!$this->requestPlace()->exists()) {
@@ -204,10 +273,10 @@ class Request extends Model
         return $this->requestPlace->pick_address;
     }
     /**
-    * Get request's drop address.
-    *
-    * @return string
-    */
+     * Get request's drop address.
+     *
+     * @return string
+     */
     public function getDropAddressAttribute()
     {
         if (!$this->requestPlace()->exists()) {
@@ -216,10 +285,10 @@ class Request extends Model
         return $this->requestPlace->drop_address;
     }
     /**
-    * Get vehicle type's name.
-    *
-    * @return string
-    */
+     * Get vehicle type's name.
+     *
+     * @return string
+     */
     public function getVehicleTypeNameAttribute()
     {
         if ($this->zoneType == null) {
@@ -230,11 +299,11 @@ class Request extends Model
         }
         return $this->zoneType->vehicleType->name;
     }
-     /**
-    * Get vehicle type's name.
-    *
-    * @return string
-    */
+    /**
+     * Get vehicle type's name.
+     *
+     * @return string
+     */
     public function getVehicleTypeImageAttribute()
     {
         if ($this->zoneType == null) {
@@ -247,89 +316,89 @@ class Request extends Model
     }
 
     /**
-    * Get formated and converted timezone of user's Trip start time.
-    * @return string
-    */
+     * Get formated and converted timezone of user's Trip start time.
+     * @return string
+     */
     public function getConvertedTripStartTimeAttribute()
     {
-        if ($this->trip_start_time==null) {
+        if ($this->trip_start_time == null) {
             return null;
         }
-        $timezone = $this->serviceLocationDetail->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
-//        return Carbon::parse($this->trip_start_time)->setTimezone($timezone)->format('jS M h:i A');
+        $timezone = $this->serviceLocationDetail->timezone ?: env('SYSTEM_DEFAULT_TIMEZONE');
+        //        return Carbon::parse($this->trip_start_time)->setTimezone($timezone)->format('jS M h:i A');
         return Carbon::parse($this->trip_start_time)->setTimezone($timezone)->format('Y-m-d H:i:s');
     }
     /**
-    * Get formated and converted timezone of user's arrived at.
-    * @return string
-    */
+     * Get formated and converted timezone of user's arrived at.
+     * @return string
+     */
     public function getConvertedArrivedAtAttribute()
     {
-        if ($this->arrived_at==null) {
+        if ($this->arrived_at == null) {
             return null;
         }
-        $timezone = $this->serviceLocationDetail->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
+        $timezone = $this->serviceLocationDetail->timezone ?: env('SYSTEM_DEFAULT_TIMEZONE');
         return Carbon::parse($this->arrived_at)->setTimezone($timezone)->format('jS M h:i A');
     }
     /**
-    * Get formated and converted timezone of user's accepted at.
-    * @return string
-    */
+     * Get formated and converted timezone of user's accepted at.
+     * @return string
+     */
     public function getConvertedAcceptedAtAttribute()
     {
-        if ($this->accepted_at==null) {
+        if ($this->accepted_at == null) {
             return null;
         }
-        $timezone = $this->serviceLocationDetail->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
+        $timezone = $this->serviceLocationDetail->timezone ?: env('SYSTEM_DEFAULT_TIMEZONE');
         return Carbon::parse($this->accepted_at)->setTimezone($timezone)->format('jS M h:i A');
     }
     /**
-    * Get formated and converted timezone of user's completed_at at.
-    * @return string
-    */
+     * Get formated and converted timezone of user's completed_at at.
+     * @return string
+     */
     public function getConvertedCompletedAtAttribute()
     {
-        if ($this->completed_at==null) {
+        if ($this->completed_at == null) {
             return null;
         }
-        $timezone = $this->serviceLocationDetail->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
+        $timezone = $this->serviceLocationDetail->timezone ?: env('SYSTEM_DEFAULT_TIMEZONE');
         return Carbon::parse($this->completed_at)->setTimezone($timezone)->format('jS M h:i A');
     }
     /**
-    * Get formated and converted timezone of user's cancelled at.
-    * @return string
-    */
+     * Get formated and converted timezone of user's cancelled at.
+     * @return string
+     */
     public function getConvertedCancelledAtAttribute()
     {
-        if ($this->cancelled_at==null) {
+        if ($this->cancelled_at == null) {
             return null;
         }
-        $timezone = $this->serviceLocationDetail->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
-//        return Carbon::parse($this->cancelled_at)->setTimezone($timezone)->format('jS M h:i A');
+        $timezone = $this->serviceLocationDetail->timezone ?: env('SYSTEM_DEFAULT_TIMEZONE');
+        //        return Carbon::parse($this->cancelled_at)->setTimezone($timezone)->format('jS M h:i A');
         return Carbon::parse($this->cancelled_at)->setTimezone($timezone)->format('Y-m-d H:i:s');
     }
     /**
-    * Get formated and converted timezone of user's created at.
-    * @return string
-    */
+     * Get formated and converted timezone of user's created at.
+     * @return string
+     */
     public function getConvertedCreatedAtAttribute()
     {
-        if ($this->created_at==null) {
+        if ($this->created_at == null) {
             return null;
         }
-        $timezone = $this->serviceLocationDetail->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
+        $timezone = $this->serviceLocationDetail->timezone ?: env('SYSTEM_DEFAULT_TIMEZONE');
         return Carbon::parse($this->created_at)->setTimezone($timezone)->format('jS M h:i A');
     }
     /**
-    * Get formated and converted timezone of user's created at.
-    * @return string
-    */
+     * Get formated and converted timezone of user's created at.
+     * @return string
+     */
     public function getConvertedUpdatedAtAttribute()
     {
-        if ($this->updated_at==null) {
+        if ($this->updated_at == null) {
             return null;
         }
-        $timezone = $this->serviceLocationDetail->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
+        $timezone = $this->serviceLocationDetail->timezone ?: env('SYSTEM_DEFAULT_TIMEZONE');
         return Carbon::parse($this->updated_at)->setTimezone($timezone)->format('jS M h:i A');
     }
 
@@ -357,29 +426,29 @@ class Request extends Model
             'drivers.name' => 20,
         ],
         'joins' => [
-            'users' => ['requests.user_id','users.id'],
-            'drivers' => ['requests.driver_id','drivers.id'],
+            'users' => ['requests.user_id', 'users.id'],
+            'drivers' => ['requests.driver_id', 'drivers.id'],
         ],
     ];
 
-     /**
-    * The Request Chat associated with the request's id.
-    *
-    * @return \Illuminate\Database\Eloquent\Relations\hasMany
-    */
+    /**
+     * The Request Chat associated with the request's id.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\hasMany
+     */
     public function requestChat()
     {
         return $this->hasMany(Chat::class, 'request_id', 'id');
     }
 
-    public function serviceLocationDetail(){
-        return $this->belongsTo(ServiceLocation::class,'service_location_id','id');
+    public function serviceLocationDetail()
+    {
+        return $this->belongsTo(ServiceLocation::class, 'service_location_id', 'id');
     }
 
     public function cancelReason()
     {
-         return $this->hasOne(CancellationReason::class, 'id', 'reason');
-
+        return $this->hasOne(CancellationReason::class, 'id', 'reason');
     }
 
     /**

@@ -13,8 +13,11 @@ use App\Transformers\Requests\TripRequestTransformer;
 use App\Models\Admin\CancellationReason;
 use App\Base\Constants\Masters\zoneRideType;
 use App\Base\Constants\Masters\WalletRemarks;
+use App\Base\Constants\Setting\Settings;
 use App\Models\Request\DriverRejectedRequest;
 use App\Jobs\Notifications\SendPushNotification;
+use Stripe\PaymentIntent;
+use Stripe\Stripe;
 
 /**
  * @group Driver-trips-apis
@@ -52,6 +55,20 @@ class DriverCancelRequestController extends BaseController
         if (!$request_detail) {
             $this->throwAuthorizationException();
         }
+
+        $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
+        $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
+        if ($stripe_enabled == 1 && $stripe_environment == 'live') {
+            Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
+        } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
+            Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
+        } else {
+            return $this->respondFailed('Stripe is not enabled');
+        }
+
+        $paymentIntent = PaymentIntent::retrieve($request_detail->stripe_payment_intent_id);
+        $paymentIntent->cancel();
+
         $request_detail->update([
             'is_cancelled'=>true,
             'reason'=>$request->reason,

@@ -41,6 +41,12 @@ Route::prefix('user')->namespace('User')->middleware('auth')->group(function () 
         Route::post('delete-user-account','ProfileController@userDeleteAccount');
 
     });
+
+    Route::prefix('card')->group(function () {
+        Route::post('/save', 'CustomerCardController@save');
+        Route::get('/', 'CustomerCardController@list');
+        Route::delete('delete/{id}', 'CustomerCardController@delete');
+    });
 });
 
 Route::get('test-socket', function () {

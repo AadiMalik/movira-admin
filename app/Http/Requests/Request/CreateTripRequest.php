@@ -20,12 +20,14 @@ class CreateTripRequest extends BaseRequest
             'drop_lng'  =>'sometimes|required',
             'vehicle_type'=>'sometimes|required|exists:zone_types,id',
             'payment_opt'=>'sometimes|required|in:0,1,2',
+            'request_eta_amount'=>'sometimes|required',
             'pick_address'=>'required',
             'drop_address'=>'sometimes|required',
             'drivers'=>'sometimes|required',
             'is_later'=>'sometimes|required|in:1',
             'trip_start_time'=>'sometimes|required|date_format:Y-m-d H:i:s',
-            'promocode_id'=>'sometimes|required|exists:promo,id'
+            'promocode_id'=>'sometimes|required|exists:promo,id',
+            'customer_card_id'=>'sometimes|required|exists:customer_cards,id',
         ];
     }
 }

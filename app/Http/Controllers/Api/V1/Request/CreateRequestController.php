@@ -24,7 +24,9 @@ use  Kreait\Firebase\Database;
 use App\Jobs\Notifications\SendPushNotification;
 use Illuminate\Http\Request as ValidatorRequest;
 use App\Helpers\Rides\FetchDriversFromFirebaseHelpers;
-
+use App\Models\CustomerCard;
+use Stripe\PaymentIntent;
+use Stripe\Stripe;
 
 /**
  * @group User-trips-apis
@@ -131,8 +133,26 @@ class CreateRequestController extends BaseController
         }
         // Generate request number
         $request_number = 'REQ_'.sprintf("%06d", $request_number+1);
-
-
+        
+        $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
+        $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
+        if ($stripe_enabled == 1 && $stripe_environment == 'live') {
+            Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
+        } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
+            Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
+        }else{
+            return $this->respondFailed('Stripe is not enabled');
+        }
+        $customer_card = CustomerCard::find($request->customer_card_id);
+        $payment_intent = PaymentIntent::create([
+            'amount' => $request->request_eta_amount * 100, // in paisa
+            'currency' => strtolower($currency_code),
+            'customer' => $user_detail->stripe_customer_id,
+            'payment_method' => $customer_card->payment_method_id,
+            'off_session' => true,
+            'capture_method' => 'manual',
+            'confirm' => true,
+        ]);
 
         $request_params = [
             'request_number'=>$request_number,
@@ -144,7 +164,9 @@ class CreateRequestController extends BaseController
             'requested_currency_code'=>$currency_code,
             'requested_currency_symbol'=>$currency_symbol,
             'service_location_id'=>$service_location->id,
-            'ride_otp'=>rand(1111, 9999)
+            'ride_otp'=>rand(1111, 9999),
+            'customer_card_id'=>$request->customer_card_id,
+            'stripe_payment_intent_id'=>$payment_intent->id
         ];
 
         if($request->has('is_bid_ride') && $request->input('is_bid_ride')==1){
