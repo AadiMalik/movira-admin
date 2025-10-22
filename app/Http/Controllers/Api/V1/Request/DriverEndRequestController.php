@@ -822,39 +822,39 @@ class DriverEndRequestController extends BaseController
         if (!$request_detail) {
             $this->throwAuthorizationException();
         }
+        if (get_settings(Settings::ENABLE_HOLD_PAYMENT_BEFORE_RIDE_START_THROUGH_STRIPE) == 1) {
+            $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
+            $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
+            if ($stripe_enabled == 1 && $stripe_environment == 'live') {
+                Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
+            } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
+                Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
+            } else {
+                return $this->respondFailed('Stripe is not enabled');
+            }
 
-        $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
-        $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
-        if ($stripe_enabled == 1 && $stripe_environment == 'live') {
-            Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
-        } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
-            Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
-        } else {
-            return $this->respondFailed('Stripe is not enabled');
+            $paymentIntent = PaymentIntent::retrieve($request_detail->stripe_payment_intent_id);
+            $finalAmount = $request_detail->final_amount;
+
+            if ($finalAmount * 100 > $paymentIntent->amount) {
+                // Capture existing hold first
+                $paymentIntent->capture();
+                $customer_card = CustomerCard::find($request_detail->customer_card_id);
+                // Charge extra separately
+                $extra = ($finalAmount * 100) - $paymentIntent->amount;
+                PaymentIntent::create([
+                    'amount' => $extra,
+                    'currency' => strtolower($request_detail->requested_currency_code),
+                    'customer' => $request_detail->userDetail->stripe_customer_id,
+                    'payment_method' => $customer_card->payment_method_id,
+                    'off_session' => true,
+                    'confirm' => true,
+                ]);
+            } else {
+                // Capture partial amount
+                $paymentIntent->capture(['amount_to_capture' => $finalAmount * 100]);
+            }
         }
-
-        $paymentIntent = PaymentIntent::retrieve($request_detail->stripe_payment_intent_id);
-        $finalAmount = $request_detail->final_amount;
-
-        if ($finalAmount * 100 > $paymentIntent->amount) {
-            // Capture existing hold first
-            $paymentIntent->capture();
-            $customer_card = CustomerCard::find($request_detail->customer_card_id);
-            // Charge extra separately
-            $extra = ($finalAmount * 100) - $paymentIntent->amount;
-            PaymentIntent::create([
-                'amount' => $extra,
-                'currency' => strtolower($request_detail->requested_currency_code),
-                'customer' => $request_detail->userDetail->stripe_customer_id,
-                'payment_method' => $customer_card->payment_method_id,
-                'off_session' => true,
-                'confirm' => true,
-            ]);
-        } else {
-            // Capture partial amount
-            $paymentIntent->capture(['amount_to_capture' => $finalAmount * 100]);
-        }
-
         $request_detail->update([
             'is_paid' => 1,
 

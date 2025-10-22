@@ -26,6 +26,13 @@ class SettingsSeeder extends Seeder
             'option_value' => '{"one-by-one":1,"to-all-drivers":0}',
             'group_name' => null,
         ],
+        SettingSlug::ENABLE_HOLD_PAYMENT_BEFORE_RIDE_START_THROUGH_STRIPE => [
+            'category'=>SettingCategory::GENERAL,
+            'value' => 1,
+            'field' => SettingValueType::SELECT,
+            'option_value' => '{"one-by-one":1,"to-all-drivers":0}',
+            'group_name' => null,
+        ],
         SettingSlug::MINIMUM_WALLET_AMOUNT_FOR_TRANSFER => [
             'category'=>SettingCategory::WALLET,
             'value' => 500,

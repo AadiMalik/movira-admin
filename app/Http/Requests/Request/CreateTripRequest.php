@@ -27,7 +27,7 @@ class CreateTripRequest extends BaseRequest
             'is_later'=>'sometimes|required|in:1',
             'trip_start_time'=>'sometimes|required|date_format:Y-m-d H:i:s',
             'promocode_id'=>'sometimes|required|exists:promo,id',
-            'customer_card_id'=>'sometimes|required|exists:customer_cards,id',
+            'customer_card_id'=>'sometimes|exists:customer_cards,id',
         ];
     }
 }

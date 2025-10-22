@@ -61,19 +61,20 @@ class UserCancelRequestController extends BaseController
         if (!$request_detail) {
             $this->throwAuthorizationException();
         }
+        if (get_settings(Settings::ENABLE_HOLD_PAYMENT_BEFORE_RIDE_START_THROUGH_STRIPE) == 1) {
+            $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
+            $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
+            if ($stripe_enabled == 1 && $stripe_environment == 'live') {
+                Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
+            } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
+                Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
+            } else {
+                return $this->respondFailed('Stripe is not enabled');
+            }
 
-        $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
-        $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
-        if ($stripe_enabled == 1 && $stripe_environment == 'live') {
-            Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
-        } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
-            Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
-        } else {
-            return $this->respondFailed('Stripe is not enabled');
+            $paymentIntent = PaymentIntent::retrieve($request_detail->stripe_payment_intent_id);
+            $paymentIntent->cancel();
         }
-
-        $paymentIntent = PaymentIntent::retrieve($request_detail->stripe_payment_intent_id);
-        $paymentIntent->cancel();
 
         $request_detail->update([
             'is_cancelled' => true,

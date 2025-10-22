@@ -39,42 +39,42 @@ class CreateRequestController extends BaseController
 
     protected $request;
 
-    public function __construct(Request $request,Database $database)
+    public function __construct(Request $request, Database $database)
     {
         $this->request = $request;
         $this->database = $database;
     }
     /**
-    * Create Request
-    * @bodyParam pick_lat double required pikup lat of the user
-    * @bodyParam pick_lng double required pikup lng of the user
-    * @bodyParam drop_lat double required drop lat of the user
-    * @bodyParam drop_lng double required drop lng of the user
-    * @bodyParam drivers json required drivers json can be fetch from firebase db
-    * @bodyParam vehicle_type string required id of zone_type_id
-    * @bodyParam payment_opt tinyInteger required type of ride whther cash or card, wallet('0 => card,1 => cash,2 => wallet)
-    * @bodyParam pick_address string required pickup address of the trip request
-    * @bodyParam drop_address string required drop address of the trip request
-    * @bodyParam is_later tinyInteger sometimes it represent the schedule rides param must be 1.
-    * @bodyParam trip_start_time timestamp sometimes it represent the schedule rides param must be datetime format:Y-m-d H:i:s.
-    * @bodyParam promocode_id uuid optional id of promo table
-    * @bodyParam rental_pack_id integer optional id of package type
-    * @responseFile responses/requests/create-request.json
-    *
-    */
+     * Create Request
+     * @bodyParam pick_lat double required pikup lat of the user
+     * @bodyParam pick_lng double required pikup lng of the user
+     * @bodyParam drop_lat double required drop lat of the user
+     * @bodyParam drop_lng double required drop lng of the user
+     * @bodyParam drivers json required drivers json can be fetch from firebase db
+     * @bodyParam vehicle_type string required id of zone_type_id
+     * @bodyParam payment_opt tinyInteger required type of ride whther cash or card, wallet('0 => card,1 => cash,2 => wallet)
+     * @bodyParam pick_address string required pickup address of the trip request
+     * @bodyParam drop_address string required drop address of the trip request
+     * @bodyParam is_later tinyInteger sometimes it represent the schedule rides param must be 1.
+     * @bodyParam trip_start_time timestamp sometimes it represent the schedule rides param must be datetime format:Y-m-d H:i:s.
+     * @bodyParam promocode_id uuid optional id of promo table
+     * @bodyParam rental_pack_id integer optional id of package type
+     * @responseFile responses/requests/create-request.json
+     *
+     */
     public function createRequest(CreateTripRequest $request)
     {
         /**
-        * Check if the user has registred a trip already
-        * Validate payment option is available.
-        * if card payment choosen, then we need to check if the user has added thier card.
-        * if the paymenr opt is wallet, need to check the if the wallet has enough money to make the trip request
-        * Check if thge user created a trip and waiting for a driver to accept. if it is we need to cancel the exists trip and create new one
-        * Find the zone using the pickup coordinates & get the nearest drivers
-        * create request along with place details
-        * assing driver to the trip depends the assignment method
-        * send emails and sms & push notifications to the user& drivers as well.
-        */
+         * Check if the user has registred a trip already
+         * Validate payment option is available.
+         * if card payment choosen, then we need to check if the user has added thier card.
+         * if the paymenr opt is wallet, need to check the if the wallet has enough money to make the trip request
+         * Check if thge user created a trip and waiting for a driver to accept. if it is we need to cancel the exists trip and create new one
+         * Find the zone using the pickup coordinates & get the nearest drivers
+         * create request along with place details
+         * assing driver to the trip depends the assignment method
+         * send emails and sms & push notifications to the user& drivers as well.
+         */
         // Check whether the trip is schedule ride or not
         if ($request->has('is_later') && $request->is_later) {
             return $this->createRideLater($request);
@@ -96,7 +96,7 @@ class CreateRequestController extends BaseController
             // get request detail
             $request_with_user = $request_meta_with_current_user->pluck('request_id')->first();
             if ($request_with_user) {
-                $this->request->where('id', $request_with_user)->update(['is_cancelled'=>1,'cancel_method'=>1,'cancelled_at'=>date('Y-m-d H:i:s')]);
+                $this->request->where('id', $request_with_user)->update(['is_cancelled' => 1, 'cancel_method' => 1, 'cancelled_at' => date('Y-m-d H:i:s')]);
             }
             // Delete all meta details
             $request_meta_with_current_user->delete();
@@ -127,82 +127,82 @@ class CreateRequestController extends BaseController
         $request_number = $this->request->orderBy('created_at', 'DESC')->pluck('request_number')->first();
         if ($request_number) {
             $request_number = explode('_', $request_number);
-            $request_number = $request_number[1]?:000000;
+            $request_number = $request_number[1] ?: 000000;
         } else {
             $request_number = 000000;
         }
         // Generate request number
-        $request_number = 'REQ_'.sprintf("%06d", $request_number+1);
-        
-        $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
-        $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
-        if ($stripe_enabled == 1 && $stripe_environment == 'live') {
-            Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
-        } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
-            Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
-        }else{
-            return $this->respondFailed('Stripe is not enabled');
-        }
-        $customer_card = CustomerCard::find($request->customer_card_id);
-        $payment_intent = PaymentIntent::create([
-            'amount' => $request->request_eta_amount * 100, // in paisa
-            'currency' => strtolower($currency_code),
-            'customer' => $user_detail->stripe_customer_id,
-            'payment_method' => $customer_card->payment_method_id,
-            'off_session' => true,
-            'capture_method' => 'manual',
-            'confirm' => true,
-        ]);
+        $request_number = 'REQ_' . sprintf("%06d", $request_number + 1);
 
+        $payment_intent_id = null;
+        if (get_settings(Settings::ENABLE_HOLD_PAYMENT_BEFORE_RIDE_START_THROUGH_STRIPE) == 1) {
+            $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
+            $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
+            if ($stripe_enabled == 1 && $stripe_environment == 'live') {
+                Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
+            } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
+                Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
+            } else {
+                return $this->respondFailed('Stripe is not enabled');
+            }
+            $customer_card = CustomerCard::find($request->customer_card_id);
+            $payment_intent = PaymentIntent::create([
+                'amount' => $request->request_eta_amount * 100, // in paisa
+                'currency' => strtolower($currency_code),
+                'customer' => $user_detail->stripe_customer_id,
+                'payment_method' => $customer_card->payment_method_id,
+                'off_session' => true,
+                'capture_method' => 'manual',
+                'confirm' => true,
+            ]);
+            $payment_intent_id = $payment_intent->id;
+        }
         $request_params = [
-            'request_number'=>$request_number,
-            'user_id'=>$user_detail->id,
-            'zone_type_id'=>$request->vehicle_type,
-            'payment_opt'=>$request->payment_opt,
-            'unit'=>(string)$unit,
-            'promo_id'=>$request->promocode_id,
-            'requested_currency_code'=>$currency_code,
-            'requested_currency_symbol'=>$currency_symbol,
-            'service_location_id'=>$service_location->id,
-            'ride_otp'=>rand(1111, 9999),
-            'customer_card_id'=>$request->customer_card_id,
-            'stripe_payment_intent_id'=>$payment_intent->id
+            'request_number' => $request_number,
+            'user_id' => $user_detail->id,
+            'zone_type_id' => $request->vehicle_type,
+            'payment_opt' => $request->payment_opt,
+            'unit' => (string)$unit,
+            'promo_id' => $request->promocode_id,
+            'requested_currency_code' => $currency_code,
+            'requested_currency_symbol' => $currency_symbol,
+            'service_location_id' => $service_location->id,
+            'ride_otp' => rand(1111, 9999),
+            'customer_card_id' => $request->customer_card_id??null,
+            'stripe_payment_intent_id' => $payment_intent_id
         ];
 
-        if($request->has('is_bid_ride') && $request->input('is_bid_ride')==1){
+        if ($request->has('is_bid_ride') && $request->input('is_bid_ride') == 1) {
 
-            $request_params['is_bid_ride']=1;
-            $request_params['offerred_ride_fare']=$request->offerred_ride_fare;
+            $request_params['is_bid_ride'] = 1;
+            $request_params['offerred_ride_fare'] = $request->offerred_ride_fare;
         }
 
-        if($request->has('rental_pack_id') && $request->rental_pack_id){
+        if ($request->has('rental_pack_id') && $request->rental_pack_id) {
 
             $request_params['is_rental'] = true;
 
             $request_params['rental_package_id'] = $request->rental_pack_id;
         }
 
-        if($request->has('myself') && $request->input('myself')==0){
+        if ($request->has('myself') && $request->input('myself') == 0) {
 
             $request_params['book_for_other'] = 1;
 
-            if(!$request->has('contact_no_other') || $request->input('contact_no_other')==null){
+            if (!$request->has('contact_no_other') || $request->input('contact_no_other') == null) {
 
                 $this->throwCustomException('please provide the valid contact');
-
             }
             $request_params['book_for_other_contact'] = $request->input('contact_no_other');
-
         }
 
 
 
         $request_params['company_key'] = auth()->user()->company_key;
 
-        if($request->has('request_eta_amount') && $request->request_eta_amount){
+        if ($request->has('request_eta_amount') && $request->request_eta_amount) {
 
-           $request_params['request_eta_amount'] = $request->request_eta_amount;
-
+            $request_params['request_eta_amount'] = $request->request_eta_amount;
         }
 
         // store request details to db
@@ -217,37 +217,38 @@ class CreateRequestController extends BaseController
 
             foreach (json_decode($request->stops) as $key => $stop) {
                 $request_detail->requestStops()->create([
-                'address'=>$stop->address,
-                'latitude'=>$stop->latitude,
-                'longitude'=>$stop->longitude,
-                'order'=>$stop->order]);
-
+                    'address' => $stop->address,
+                    'latitude' => $stop->latitude,
+                    'longitude' => $stop->longitude,
+                    'order' => $stop->order
+                ]);
             }
         }
         // request place detail params
         $request_place_params = [
-            'pick_lat'=>$request->pick_lat,
-            'pick_lng'=>$request->pick_lng,
-            'drop_lat'=>$request->drop_lat,
-            'drop_lng'=>$request->drop_lng,
-            'pick_address'=>$request->pick_address,
-            'drop_address'=>$request->drop_address];
+            'pick_lat' => $request->pick_lat,
+            'pick_lng' => $request->pick_lng,
+            'drop_lat' => $request->drop_lat,
+            'drop_lng' => $request->drop_lng,
+            'pick_address' => $request->pick_address,
+            'drop_address' => $request->drop_address
+        ];
 
-            // Log::info($request_place_params);
+        // Log::info($request_place_params);
         // store request place details
         $request_detail->requestPlace()->create($request_place_params);
 
         // Add Request detail to firebase database
-         $this->database->getReference('requests/'.$request_detail->id)->update(['request_id'=>$request_detail->id,'request_number'=>$request_detail->request_number,'service_location_id'=>$service_location->id,'user_id'=>$request_detail->user_id,'pick_address'=>$request->pick_address,'active'=>1,'date'=>$request_detail->converted_created_at,'updated_at'=> Database::SERVER_TIMESTAMP]);
+        $this->database->getReference('requests/' . $request_detail->id)->update(['request_id' => $request_detail->id, 'request_number' => $request_detail->request_number, 'service_location_id' => $service_location->id, 'user_id' => $request_detail->user_id, 'pick_address' => $request->pick_address, 'active' => 1, 'date' => $request_detail->converted_created_at, 'updated_at' => Database::SERVER_TIMESTAMP]);
 
         $request_result =  fractal($request_detail, new TripRequestTransformer)->parseIncludes('userDetail');
 
-         $nearest_drivers =  $this->fetchDriversFromFirebase($request_detail);
+        $nearest_drivers =  $this->fetchDriversFromFirebase($request_detail);
 
         // Send Request to the nearest Drivers
-         if ($nearest_drivers==null) {
-                goto no_drivers_available;
-            }
+        if ($nearest_drivers == null) {
+            goto no_drivers_available;
+        }
 
         no_drivers_available:
 
@@ -269,14 +270,14 @@ class CreateRequestController extends BaseController
 
 
     /**
-    * Create Ride later trip
-    */
+     * Create Ride later trip
+     */
     public function createRideLater(CreateTripRequest $request)
     {
         /**
-        * @TODO validate if the user has any trip with same time period
-        *
-        */
+         * @TODO validate if the user has any trip with same time period
+         *
+         */
         // get type id
         $zone_type_detail = ZoneType::where('id', $request->vehicle_type)->first();
         $type_id = $zone_type_detail->type_id;
@@ -295,15 +296,15 @@ class CreateRequestController extends BaseController
         $request_number = $this->request->orderBy('updated_at', 'DESC')->pluck('request_number')->first();
         if ($request_number) {
             $request_number = explode('_', $request_number);
-            $request_number = $request_number[1]?:000000;
+            $request_number = $request_number[1] ?: 000000;
         } else {
             $request_number = 000000;
         }
         // Generate request number
-        $request_number = 'REQ_'.sprintf("%06d", $request_number+1);
+        $request_number = 'REQ_' . sprintf("%06d", $request_number + 1);
 
         // Convert trip start time as utc format
-        $timezone = $service_location->timezonek?:env('SYSTEM_DEFAULT_TIMEZONE');
+        $timezone = $service_location->timezonek ?: env('SYSTEM_DEFAULT_TIMEZONE');
 
         // Update timezone for user
         $user_detail->timezone = $service_location->timezone;
@@ -313,27 +314,27 @@ class CreateRequestController extends BaseController
         $trip_start_time = Carbon::parse($request->trip_start_time, $timezone)->setTimezone('UTC')->toDateTimeString();
 
         $request_params = [
-            'request_number'=>$request_number,
-            'user_id'=>$user_detail->id,
-            'is_later'=>true,
-            'trip_start_time'=>$trip_start_time,
-            'zone_type_id'=>$request->vehicle_type,
-            'payment_opt'=>$request->payment_opt,
-            'unit'=>(string)$unit,
-            'requested_currency_code'=>$currency_code,
-            'requested_currency_symbol'=>$currency_symbol,
-            'service_location_id'=>$service_location->id,
-            'ride_otp'=>rand(1111, 9999)];
+            'request_number' => $request_number,
+            'user_id' => $user_detail->id,
+            'is_later' => true,
+            'trip_start_time' => $trip_start_time,
+            'zone_type_id' => $request->vehicle_type,
+            'payment_opt' => $request->payment_opt,
+            'unit' => (string)$unit,
+            'requested_currency_code' => $currency_code,
+            'requested_currency_symbol' => $currency_symbol,
+            'service_location_id' => $service_location->id,
+            'ride_otp' => rand(1111, 9999)
+        ];
 
         $request_params['company_key'] = auth()->user()->company_key;
 
-        if($request->has('request_eta_amount') && $request->request_eta_amount){
+        if ($request->has('request_eta_amount') && $request->request_eta_amount) {
 
-           $request_params['request_eta_amount'] = $request->request_eta_amount;
-
+            $request_params['request_eta_amount'] = $request->request_eta_amount;
         }
 
-        if($request->has('rental_pack_id') && $request->rental_pack_id){
+        if ($request->has('rental_pack_id') && $request->rental_pack_id) {
 
             $request_params['is_rental'] = true;
 
@@ -345,29 +346,30 @@ class CreateRequestController extends BaseController
         try {
             $request_detail = $this->request->create($request_params);
 
-             if ($request->has('stops')) {
-            foreach (json_decode($request->stops) as $key => $stop) {
-                $request_detail->requestStops()->create([
-                'address'=>$stop->address,
-                'latitude'=>$stop->latitude,
-                'longitude'=>$stop->longitude,
-                'order'=>$stop->order]);
-
+            if ($request->has('stops')) {
+                foreach (json_decode($request->stops) as $key => $stop) {
+                    $request_detail->requestStops()->create([
+                        'address' => $stop->address,
+                        'latitude' => $stop->latitude,
+                        'longitude' => $stop->longitude,
+                        'order' => $stop->order
+                    ]);
+                }
             }
-        }
             // request place detail params
             $request_place_params = [
-            'pick_lat'=>$request->pick_lat,
-            'pick_lng'=>$request->pick_lng,
-            'drop_lat'=>$request->drop_lat,
-            'drop_lng'=>$request->drop_lng,
-            'pick_address'=>$request->pick_address,
-            'drop_address'=>$request->drop_address];
+                'pick_lat' => $request->pick_lat,
+                'pick_lng' => $request->pick_lng,
+                'drop_lat' => $request->drop_lat,
+                'drop_lng' => $request->drop_lng,
+                'pick_address' => $request->pick_address,
+                'drop_address' => $request->drop_address
+            ];
             // store request place details
             $request_detail->requestPlace()->create($request_place_params);
 
             // Add Request detail to firebase database
-         $this->database->getReference('requests/'.$request_detail->id)->update(['request_id'=>$request_detail->id,'request_number'=>$request_detail->request_number,'service_location_id'=>$service_location->id,'user_id'=>$request_detail->user_id,'pick_address'=>$request->pick_address,'active'=>1,'date'=>$request_detail->converted_trip_start_time,'updated_at'=> Database::SERVER_TIMESTAMP]);
+            $this->database->getReference('requests/' . $request_detail->id)->update(['request_id' => $request_detail->id, 'request_number' => $request_detail->request_number, 'service_location_id' => $service_location->id, 'user_id' => $request_detail->user_id, 'pick_address' => $request->pick_address, 'active' => 1, 'date' => $request_detail->converted_trip_start_time, 'updated_at' => Database::SERVER_TIMESTAMP]);
 
             $request_result =  fractal($request_detail, new TripRequestTransformer)->parseIncludes('userDetail');
             // @TODO send sms & email to the user
@@ -379,7 +381,7 @@ class CreateRequestController extends BaseController
         }
         DB::commit();
 
-        return $this->respondSuccess($request_result,'created_request_successfully');
+        return $this->respondSuccess($request_result, 'created_request_successfully');
     }
 
 
@@ -388,57 +390,56 @@ class CreateRequestController extends BaseController
      *
      *
      * */
-    public function respondForBid(ValidatorRequest $request){
+    public function respondForBid(ValidatorRequest $request)
+    {
 
         // Get Request Detail
-        $request_detail = $this->request->where('id', $request->input('request_id'))->where('user_id',auth()->user()->id)->first();
+        $request_detail = $this->request->where('id', $request->input('request_id'))->where('user_id', auth()->user()->id)->first();
         // Validate the request i,e the request is already accepted by some one and it is a valid request for accept or reject state.
 
-        if($request_detail==null){
+        if ($request_detail == null) {
             $this->throwCustomException('unauthorized request');
         }
 
         $this->validateRequestDetail($request_detail);
 
-        $driver = Driver::where('id',$request->driver_id)->first();
+        $driver = Driver::where('id', $request->driver_id)->first();
 
         $updated_params = [
-            'driver_id'=>$driver->id,
-            'accepted_at'=>date('Y-m-d H:i:s'),
-            'is_driver_started'=>true,
-            'accepted_ride_fare'=>$request->accepted_ride_fare,
-            'offerred_ride_fare'=>$request->offerred_ride_fare
+            'driver_id' => $driver->id,
+            'accepted_at' => date('Y-m-d H:i:s'),
+            'is_driver_started' => true,
+            'accepted_ride_fare' => $request->accepted_ride_fare,
+            'offerred_ride_fare' => $request->offerred_ride_fare
         ];
 
-        if($driver->owner_id){
+        if ($driver->owner_id) {
 
-                $updated_params['owner_id'] = $driver->owner_id;
+            $updated_params['owner_id'] = $driver->owner_id;
 
-                $updated_params['fleet_id'] = $driver->fleet_id;
-            }
+            $updated_params['fleet_id'] = $driver->fleet_id;
+        }
 
         $request_detail->update($updated_params);
         $request_detail->fresh();
 
         $driver->available = false;
-            $driver->save();
+        $driver->save();
 
         $notifable_driver = $driver->user;
 
-        $title = trans('push_notifications.ride_confirmed_by_user_title',[],$notifable_driver->lang);
-        $body = trans('push_notifications.ride_confirmed_by_user_body',[],$notifable_driver->lang);
+        $title = trans('push_notifications.ride_confirmed_by_user_title', [], $notifable_driver->lang);
+        $body = trans('push_notifications.ride_confirmed_by_user_body', [], $notifable_driver->lang);
 
-        dispatch(new SendPushNotification($notifable_driver,$title,$body));
+        dispatch(new SendPushNotification($notifable_driver, $title, $body));
 
         return $this->respondSuccess();
-
-
     }
 
 
     /**
-    * Validate the request detail
-    */
+     * Validate the request detail
+     */
     public function validateRequestDetail($request_detail)
     {
 

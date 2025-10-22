@@ -138,6 +138,7 @@ class Settings
     const TRIP_DISPTACH_TYPE='trip_dispatch_type';
     const RAZOR_PAY_SECRET_KEY='razorpay_secret_key';
     const RAZOR_PAY_PRODUCTION_SECRET_KEY ='razor_pay_production_secrect_key';
+    const ENABLE_HOLD_PAYMENT_BEFORE_RIDE_START_THROUGH_STRIPE ='enable_hold_payment_before_ride_start_through_stripe';
 /*CCAVENU*/
     const ENABLE_CCAVENUE='enable-ccavenue';
     const WORKING_KEY='working-key';

@@ -38,4 +38,7 @@ Route::namespace('Common')->group(function () {
 
     // Get all the ServiceLocation.
     Route::get('servicelocation', 'ServiceLocationController@index');
+
+    //get all setting
+    Route::get('setting', 'SettingController@setting');
 });
