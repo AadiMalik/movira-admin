@@ -6,7 +6,7 @@ use App\Models\User;
 use App\Base\Constants\Setting\Settings;
 use App\Http\Controllers\ApiController;
 use App\Models\CustomerCard;
-use App\Models\Request\Request;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Stripe\Customer;
 use Stripe\PaymentMethod;
