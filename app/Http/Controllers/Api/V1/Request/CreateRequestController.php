@@ -135,7 +135,7 @@ class CreateRequestController extends BaseController
         $request_number = 'REQ_' . sprintf("%06d", $request_number + 1);
 
         $payment_intent_id = null;
-        if (get_settings(Settings::ENABLE_HOLD_PAYMENT_BEFORE_RIDE_START_THROUGH_STRIPE) == 1) {
+        if (get_settings(Settings::ENABLE_HOLD_PAYMENT_BEFORE_RIDE_START_THROUGH_STRIPE) == 1 && $request->payment_method == 'card_payment_before') {
             $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
             $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
             if ($stripe_enabled == 1 && $stripe_environment == 'live') {
@@ -169,7 +169,8 @@ class CreateRequestController extends BaseController
             'service_location_id' => $service_location->id,
             'ride_otp' => rand(1111, 9999),
             'customer_card_id' => $request->customer_card_id??null,
-            'stripe_payment_intent_id' => $payment_intent_id
+            'stripe_payment_intent_id' => $payment_intent_id,
+            'payment_method'=>$request->payment_method
         ];
 
         if ($request->has('is_bid_ride') && $request->input('is_bid_ride') == 1) {

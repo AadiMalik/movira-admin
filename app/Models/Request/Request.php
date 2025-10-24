@@ -82,7 +82,8 @@ class Request extends Model
         'accepted_ride_fare',
         'is_bid_ride',
         'customer_card_id',
-        'stripe_payment_intent_id'
+        'stripe_payment_intent_id',
+        'payment_method',
     ];
 
     /**

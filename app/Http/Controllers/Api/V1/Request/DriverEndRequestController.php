@@ -822,7 +822,7 @@ class DriverEndRequestController extends BaseController
         if (!$request_detail) {
             $this->throwAuthorizationException();
         }
-        if (get_settings(Settings::ENABLE_HOLD_PAYMENT_BEFORE_RIDE_START_THROUGH_STRIPE) == 1) {
+        if (get_settings(Settings::ENABLE_HOLD_PAYMENT_BEFORE_RIDE_START_THROUGH_STRIPE) == 1 && $request_detail->payment_method == 'card_payment_before') {
             $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
             $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
             if ($stripe_enabled == 1 && $stripe_environment == 'live') {
@@ -854,6 +854,22 @@ class DriverEndRequestController extends BaseController
                 // Capture partial amount
                 $paymentIntent->capture(['amount_to_capture' => $finalAmount * 100]);
             }
+        } elseif ($request_detail->payment_method == 'card_payment_after') {
+            $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
+            $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
+            if ($stripe_enabled == 1 && $stripe_environment == 'live') {
+                Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
+            } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
+                Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
+            } else {
+                return $this->respondFailed('Stripe is not enabled');
+            }
+            PaymentIntent::create([
+                'amount' => $request_detail->final_amount * 100,
+                'currency' => strtolower($request_detail->requested_currency_code),
+                'automatic_payment_methods' => ['enabled' => true],
+                'description' => 'One-time payment for Ride Service',
+            ]);
         }
         $request_detail->update([
             'is_paid' => 1,

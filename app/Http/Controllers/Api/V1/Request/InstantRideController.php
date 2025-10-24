@@ -93,7 +93,8 @@ class InstantRideController extends BaseController
             'arrived_at'=>date('Y-m-d H:i:s'),
             'is_trip_start'=>true,
             'trip_start_time'=>date('Y-m-d H:i:s'),
-            'instant_ride'=>true
+            'instant_ride'=>true,
+            'payment_method'=>'cash_payment'
         ];  
 
         if($request->has('request_eta_amount') && $request->request_eta_amount){
