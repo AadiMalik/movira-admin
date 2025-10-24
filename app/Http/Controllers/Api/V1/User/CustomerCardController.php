@@ -3,15 +3,11 @@
 namespace App\Http\Controllers\Api\V1\User;
 
 use App\Models\User;
-use App\Base\Constants\Auth\Role;
 use App\Base\Constants\Setting\Settings;
 use App\Http\Controllers\ApiController;
 use App\Models\CustomerCard;
 use App\Models\Request\Request;
-use App\Transformers\User\UserTransformer;
-use App\Transformers\Driver\DriverProfileTransformer;
-use App\Transformers\Owner\OwnerProfileTransformer;
-use App\Transformers\User\DispatcherTransformer;
+use Illuminate\Support\Facades\Validator;
 use Stripe\Customer;
 use Stripe\PaymentMethod;
 use Stripe\Stripe;
@@ -27,6 +23,13 @@ class CustomerCardController extends ApiController
 
       public function save(Request $request)
       {
+            $validator = Validator::make($request->all(), [
+                  'payment_method_id' => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                  return  $this->respondFailed($validator->errors()->first());
+            }
             $user = auth()->user();
 
             $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
@@ -39,7 +42,7 @@ class CustomerCardController extends ApiController
                   return $this->respondFailed('Stripe is not enabled');
             }
             $stripe_customer_id = $user->stripe_customer_id;
-            if($user->stripe_customer_id == null){
+            if ($user->stripe_customer_id == null) {
                   $user_update = User::find($user->id);
                   $customer = Customer::create([
                         'email' => $user->email,
@@ -53,7 +56,7 @@ class CustomerCardController extends ApiController
             $paymentMethod->attach(['customer' => $stripe_customer_id]);
 
             Customer::update($stripe_customer_id, [
-                  'invoice_settings' => ['default_payment_method' =>$request->payment_method_id],
+                  'invoice_settings' => ['default_payment_method' => $request->payment_method_id],
             ]);
 
             $customer_card = CustomerCard::create([
