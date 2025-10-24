@@ -39,7 +39,7 @@ class CustomerCardController extends ApiController
                   return $this->respondFailed('Stripe is not enabled');
             }
             $stripe_customer_id = $user->stripe_customer_id;
-            if($stripe_enabled == 1 && $user->stripe_customer_id == null){
+            if($user->stripe_customer_id == null){
                   $user_update = User::find($user->id);
                   $customer = Customer::create([
                         'email' => $user->email,
@@ -53,12 +53,12 @@ class CustomerCardController extends ApiController
             $paymentMethod->attach(['customer' => $stripe_customer_id]);
 
             Customer::update($stripe_customer_id, [
-                  'invoice_settings' => ['default_payment_method' => $paymentMethod->id],
+                  'invoice_settings' => ['default_payment_method' =>$request->payment_method_id],
             ]);
 
             $customer_card = CustomerCard::create([
                   'user_id' => $user->id,
-                  'payment_method_id' => $paymentMethod->id,
+                  'payment_method_id' => $request->payment_method_id,
                   'brand' => $paymentMethod->card->brand,
                   'last4' => $paymentMethod->card->last4,
                   'exp_month' => $paymentMethod->card->exp_month,
