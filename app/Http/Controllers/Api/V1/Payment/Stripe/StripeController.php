@@ -74,10 +74,11 @@ class StripeController extends ApiController
 
             $test_environment = false;
         }
-        $setupIntent = SetupIntent::create([
-            'usage' => 'off_session', // for future use
-        ]);
         $user = auth()->user();
+        $setupIntent = SetupIntent::create([
+            'customer' => $user->stripe_customer_id, 
+            'payment_method_types' => ['card'],  
+        ]);
 
 
         return $this->respondSuccess([
