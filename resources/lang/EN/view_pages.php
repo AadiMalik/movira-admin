@@ -845,5 +845,5 @@ return array (
   'zone_a' => 'Zone A',
   'zone_b' => 'Zone B',
   'zone_c' => 'Zone C',
-  'enable_hold_payment_before_ride_start_through_stripe'=>'Enable Hold Payment Before Ride Start Through Stripe',
+  'enable_hold_payment_before_ride_start_through_stripe' => 'Enable Hold Payment Before Ride Start Through Stripe',
 );
