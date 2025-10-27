@@ -478,6 +478,17 @@ Route::middleware('auth:web')->group(function () {
             Route::get('delete/{faq}', 'FaqController@delete');
         });
 
+        // Subscription Package CRUD
+        Route::group(['prefix' => 'subscription-package',  'middleware' => 'permission:manage-faq'], function () {
+            Route::get('/', 'SubscriptionPackageController@index');
+            Route::get('/fetch', 'SubscriptionPackageController@fetch');
+            Route::get('/create', 'SubscriptionPackageController@create');
+            Route::post('store', 'SubscriptionPackageController@store');
+            Route::get('/{subscription-package}', 'SubscriptionPackageController@getById');
+            Route::get('toggle_status/{subscription-package}', 'SubscriptionPackageController@toggleStatus');
+            Route::get('delete/{subscription-package}', 'SubscriptionPackageController@delete');
+        });
+
         // Cancellation Reason CRUD
         Route::group(['prefix' => 'cancellation',  'middleware' => 'permission:cancellation-reason'], function () {
             Route::get('/', 'CancellationReasonController@index');

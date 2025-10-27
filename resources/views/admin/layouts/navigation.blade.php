@@ -603,10 +603,18 @@ if(str_contains((string)request()->path(),'translations')){
         </ul>
       </li>
       @endif
+      
       @if(auth()->user()->can('manage-faq'))
       <li class="{{'faq' == $main_menu ? 'active' : '' }}">
         <a href="{{url('/faq')}}">
           <i class="fa fa-question-circle"></i> <span>@lang('pages_names.faq')</span>
+        </a>
+      </li>
+      @endif
+      @if(auth()->user()->can('manage-faq'))
+      <li>
+        <a href="{{url('/subscription-package')}}">
+          <i class="fa fa-question-circle"></i> <span>Subscription Packages</span>
         </a>
       </li>
       @endif
