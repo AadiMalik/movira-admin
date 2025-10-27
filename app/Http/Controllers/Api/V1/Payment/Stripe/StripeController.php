@@ -65,12 +65,10 @@ class StripeController extends ApiController
             $test_environment = true;
 
 
-            Stripe::setApiKey($secret_key);
-        } else {
+            Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
+        }else{
 
-            $secret_key = get_settings(Settings::STRIPE_LIVE_SECRET_KEY);
-
-            Stripe::setApiKey($secret_key);
+            Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
 
             $test_environment = false;
         }
