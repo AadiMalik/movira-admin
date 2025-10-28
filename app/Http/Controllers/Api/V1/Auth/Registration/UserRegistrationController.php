@@ -222,91 +222,91 @@ class UserRegistrationController extends LoginController
         }
 
 
-        // DB::beginTransaction();
-        // try {
-        $stripe_customer_id = null;
-        $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
-        $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
-        if ($stripe_enabled == 1 && $stripe_environment == 'live') {
-            Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
+        DB::beginTransaction();
+        try {
+            $stripe_customer_id = null;
+            $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
+            $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
+            if ($stripe_enabled == 1 && $stripe_environment == 'live') {
+                Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
 
-            $stripe_customer = Customer::create([
-                'email' => $request->input('email'),
+                $stripe_customer = Customer::create([
+                    'email' => $request->input('email'),
+                    'name' => $request->input('name'),
+                ]);
+
+                $stripe_customer_id = $stripe_customer->id;
+            } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
+                Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
+
+                $stripe_customer = Customer::create([
+                    'email' => $request->input('email'),
+                    'name' => $request->input('name'),
+                ]);
+
+                $stripe_customer_id = $stripe_customer->id;
+            }
+
+            $user_params = [
                 'name' => $request->input('name'),
-            ]);
-
-            $stripe_customer_id = $stripe_customer->id;
-        } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
-            Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
-
-            $stripe_customer = Customer::create([
                 'email' => $request->input('email'),
-                'name' => $request->input('name'),
-            ]);
+                'mobile' => $mobile,
+                'mobile_confirmed' => true,
+                'fcm_token' => $request->input('device_token'),
+                'login_by' => $request->input('login_by'),
+                'country' => $country_id,
+                'refferal_code' => str_random(6),
+                'profile_picture' => $profile_picture,
+                'lang' => $request->input('lang'),
+                'stripe_customer_id' => $stripe_customer_id
+            ];
 
-            $stripe_customer_id = $stripe_customer->id;
+            if ($request->has('is_bid_app')) {
+
+                $user_params['is_bid_app'] = 1;
+            }
+            if ($request->has('email_confirmed') == true) {
+                $user_params['email_confirmed'] = true;
+            }
+            if (env('APP_FOR') == 'demo' && $request->has('company_key') && $request->input('company_key')) {
+                $user_params['company_key'] = $request->input('company_key');
+            }
+            if ($request->has('password') && $request->input('password')) {
+                $user_params['password'] = bcrypt($request->input('password'));
+            }
+            $user = $this->user->create($user_params);
+
+            // $this->otpHandler->delete($mobileUuid);
+
+            // Create Empty Wallet to the user
+            $user->userWallet()->create(['amount_added' => 0]);
+
+            $user->attachRole(Role::USER);
+
+            // $this->dispatch(new UserRegistrationNotification($user));
+
+            event(new UserRegistered($user));
+
+
+            if ($request->has('oauth_token') & $request->input('oauth_token')) {
+                $oauth_token = $request->oauth_token;
+                $social_user = Socialite::driver($provider)->userFromToken($oauth_token);
+                // Update User data with social provider
+                $user->social_id = $social_user->id;
+                $user->social_token = $social_user->token;
+                $user->social_refresh_token = $social_user->refreshToken;
+                $user->social_expires_in = $social_user->expiresIn;
+                $user->social_avatar = $social_user->avatar;
+                $user->social_avatar_original = $social_user->avatar_original;
+                $user->save();
+            }
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error($e);
+            Log::error('Error while Registering a user account. Input params : ' . json_encode($request->all()));
+            return $this->respondBadRequest('Unknown error occurred. Please try again later or contact us if it continues.');
         }
-
-        $user_params = [
-            'name' => $request->input('name'),
-            'email' => $request->input('email'),
-            'mobile' => $mobile,
-            'mobile_confirmed' => true,
-            'fcm_token' => $request->input('device_token'),
-            'login_by' => $request->input('login_by'),
-            'country' => $country_id,
-            'refferal_code' => str_random(6),
-            'profile_picture' => $profile_picture,
-            'lang' => $request->input('lang'),
-            'stripe_customer_id' => $stripe_customer_id
-        ];
-
-        if ($request->has('is_bid_app')) {
-
-            $user_params['is_bid_app'] = 1;
-        }
-        if ($request->has('email_confirmed') == true) {
-            $user_params['email_confirmed'] = true;
-        }
-        if (env('APP_FOR') == 'demo' && $request->has('company_key') && $request->input('company_key')) {
-            $user_params['company_key'] = $request->input('company_key');
-        }
-        if ($request->has('password') && $request->input('password')) {
-            $user_params['password'] = bcrypt($request->input('password'));
-        }
-        $user = $this->user->create($user_params);
-
-        // $this->otpHandler->delete($mobileUuid);
-
-        // Create Empty Wallet to the user
-        $user->userWallet()->create(['amount_added' => 0]);
-
-        $user->attachRole(Role::USER);
-
-        // $this->dispatch(new UserRegistrationNotification($user));
-
-        event(new UserRegistered($user));
-
-
-        if ($request->has('oauth_token') & $request->input('oauth_token')) {
-            $oauth_token = $request->oauth_token;
-            $social_user = Socialite::driver($provider)->userFromToken($oauth_token);
-            // Update User data with social provider
-            $user->social_id = $social_user->id;
-            $user->social_token = $social_user->token;
-            $user->social_refresh_token = $social_user->refreshToken;
-            $user->social_expires_in = $social_user->expiresIn;
-            $user->social_avatar = $social_user->avatar;
-            $user->social_avatar_original = $social_user->avatar_original;
-            $user->save();
-        }
-        //     DB::commit();
-        // } catch (\Exception $e) {
-        //     DB::rollBack();
-        //     Log::error($e);
-        //     Log::error('Error while Registering a user account. Input params : ' . json_encode($request->all()));
-        //     return $this->respondBadRequest('Unknown error occurred. Please try again later or contact us if it continues.');
-        // }
         if (($user->email_confirmed) == true) {
 
             /*mail Template*/

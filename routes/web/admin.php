@@ -484,10 +484,19 @@ Route::middleware('auth:web')->group(function () {
             Route::get('/fetch', 'SubscriptionPackageController@fetch');
             Route::get('/create', 'SubscriptionPackageController@create');
             Route::post('store', 'SubscriptionPackageController@store');
-            Route::get('/{subscription-package}', 'SubscriptionPackageController@getById');
-            Route::get('toggle_status/{subscription-package}', 'SubscriptionPackageController@toggleStatus');
-            Route::get('delete/{subscription-package}', 'SubscriptionPackageController@delete');
+            Route::get('edit/{id}', 'SubscriptionPackageController@getById');
+            Route::get('toggle_status/{id}', 'SubscriptionPackageController@toggleStatus');
+            Route::get('delete/{id}', 'SubscriptionPackageController@delete');
         });
+        Route::group(['prefix' => 'subscription-package-feature',  'middleware' => 'permission:manage-faq'], function () {
+            Route::get('/{subscription_package_id}', 'SubscriptionPackageFeatureController@index');
+            Route::get('/fetch/{subscription_package_id}', 'SubscriptionPackageFeatureController@fetch');
+            Route::get('/create/{subscription_package_id}', 'SubscriptionPackageFeatureController@create');
+            Route::post('store', 'SubscriptionPackageFeatureController@store');
+            Route::get('edit/{id}', 'SubscriptionPackageFeatureController@getById');
+            Route::get('delete/{id}', 'SubscriptionPackageFeatureController@delete');
+        });
+
 
         // Cancellation Reason CRUD
         Route::group(['prefix' => 'cancellation',  'middleware' => 'permission:cancellation-reason'], function () {

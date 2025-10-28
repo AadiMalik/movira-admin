@@ -17,6 +17,8 @@ class SubscriptionPackage extends Model
         'price',
         'duration_type',
         'is_active',
+        'stripe_package_id',
+        'stripe_price_id',
         'created_at',
         'updated_at',
         'deleted_at',

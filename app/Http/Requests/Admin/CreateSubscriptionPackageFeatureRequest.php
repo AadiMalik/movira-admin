@@ -4,7 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class CreateSubscriptionPackageRequest extends FormRequest
+class CreateSubscriptionPackageFeatureRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,9 +25,8 @@ class CreateSubscriptionPackageRequest extends FormRequest
     {
         return [
             'title' => 'required',
-            'description' => 'required',
-            'price' => 'required|numeric',
-            'duration_type' => 'required|string|in:week,month,year',
+            'value' => 'required',
+            'sorting' => 'required|numeric',
         ];
     }
 }

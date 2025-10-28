@@ -13,6 +13,7 @@ use App\Events\Auth\UserRegistered;
 use Illuminate\Support\Facades\Log;
 use App\Models\Admin\ServiceLocation;
 use App\Base\Constants\Masters\WalletRemarks;
+use App\Base\Constants\Setting\Settings;
 use App\Http\Controllers\Api\V1\BaseController;
 use App\Jobs\Notifications\AndroidPushNotification;
 use App\Base\Services\OTP\Handler\OTPHandlerContract;
@@ -26,6 +27,8 @@ use App\Mail\WelcomeMail;
 use Illuminate\Support\Facades\Mail;
 use App\Jobs\Mails\SendMailNotification;
 use App\Models\Admin\DriverVehicleType;
+use Stripe\Customer;
+use Stripe\Stripe;
 
 /**
  * @group SignUp-And-Otp-Validation
@@ -125,6 +128,29 @@ class DriverSignupController extends LoginController
         // DB::beginTransaction();
         // try {
 
+        $stripe_customer_id = null;
+        $stripe_enabled = get_settings(Settings::ENABLE_STRIPE);
+        $stripe_environment = get_settings(Settings::STRIPE_ENVIRONMENT);
+        if ($stripe_enabled == 1 && $stripe_environment == 'live') {
+            Stripe::setApiKey(get_settings(Settings::STRIPE_LIVE_SECRET_KEY));
+
+            $stripe_customer = Customer::create([
+                'email' => $request->input('email'),
+                'name' => $request->input('name'),
+            ]);
+
+            $stripe_customer_id = $stripe_customer->id;
+        } elseif ($stripe_enabled == 1 && $stripe_environment == 'test') {
+            Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
+
+            $stripe_customer = Customer::create([
+                'email' => $request->input('email'),
+                'name' => $request->input('name'),
+            ]);
+
+            $stripe_customer_id = $stripe_customer->id;
+        }
+
         $data = [
             'name' => $request->input('name'),
             'email' => $request->input('email'),
@@ -137,7 +163,8 @@ class DriverSignupController extends LoginController
             'country'=>$country_id,
             'profile_picture'=>$profile_picture,
             'refferal_code'=>str_random(6),
-            'lang'=>$request->input('lang')
+            'lang'=>$request->input('lang'),
+            'stripe_customer_id'=>$stripe_customer_id
         ];
 
         if ($request->has('email_confirmed') == true)

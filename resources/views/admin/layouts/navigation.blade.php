@@ -612,7 +612,7 @@ if(str_contains((string)request()->path(),'translations')){
       </li>
       @endif
       @if(auth()->user()->can('manage-faq'))
-      <li>
+      <li class="{{'subscription-package' == $main_menu ? 'active' : '' }}">
         <a href="{{url('/subscription-package')}}">
           <i class="fa fa-question-circle"></i> <span>Subscription Packages</span>
         </a>

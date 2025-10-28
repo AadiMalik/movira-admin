@@ -3,10 +3,8 @@
         <tr>
             <th> @lang('view_pages.s_no')</th>
             <th> Title</th>
-            <th> Price</th>
-            <th> Package Type</th>
-            <th> @lang('view_pages.status')</th>
-            <th> Description</th>
+            <th> Value</th>
+            <th> Sorting</th>
             <th> @lang('view_pages.action')</th>
         </tr>
     </thead>
@@ -18,36 +16,20 @@
         <tr>
             <td>{{ $i++ }} </td>
             <td>{{$result->title??''}}</td>
-            <td>{{$result->price??0}}</td>
-            <td>
-                <span class="label label-warning">{{ ucfirst($result->duration_type) }}</span>
-            </td>
-            @if($result->is_active)
-            <td><span class="label label-success">@lang('view_pages.active')</span></td>
-            @else
-            <td><span class="label label-danger">@lang('view_pages.inactive')</span></td>
-            @endif
-
-            <td>{{$result->description??''}}</td>
+            <td>{{$result->value??''}}</td>
+            <td>{{$result->sorting??''}}</td>
             <td>
 
                 <button type="button" class="btn btn-info btn-sm dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">@lang('view_pages.action')
                 </button>
                 <div class="dropdown-menu">
                     @if (auth()->user()->can('edit-faq'))
-                    <a class="dropdown-item" href="{{url('subscription-package/edit',$result->id)}}"><i class="fa fa-pencil"></i>@lang('view_pages.edit')</a>
+                    <a class="dropdown-item" href="{{url('subscription-package-feature/edit',$result->id)}}"><i class="fa fa-pencil"></i>@lang('view_pages.edit')</a>
                     @endif
                     @if (auth()->user()->can('toggle-faq'))
-
-                    @if($result->is_active)
-                    <a class="dropdown-item" href="{{url('subscription-package/toggle_status',$result->id)}}"><i class="fa fa-dot-circle-o"></i>@lang('view_pages.inactive')</a>
-                    @else
-                    <a class="dropdown-item" href="{{url('subscription-package/toggle_status',$result->id)}}"><i class="fa fa-dot-circle-o"></i>@lang('view_pages.active')</a>
                     @endif
-                    @endif
-                    <a class="dropdown-item" href="{{ url('subscription-package-feature/' . $result->id) }}"><i class="fa fa-dot-circle-o"></i>Features</a>
                     @if (auth()->user()->can('delete-faq'))
-                    <a class="dropdown-item sweet-delete" href="{{url('subscription-package/delete',$result->id)}}"><i class="fa fa-trash-o"></i>@lang('view_pages.delete')</a>
+                    <a class="dropdown-item sweet-delete" href="{{url('subscription-package-feature/delete',$result->id)}}"><i class="fa fa-trash-o"></i>@lang('view_pages.delete')</a>
                     @endif
                 </div>
                 </div>

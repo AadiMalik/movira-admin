@@ -79,3 +79,10 @@ Route::namespace('Notification')->prefix('notifications')->middleware('auth')->g
 
     });
 });
+
+Route::namespace('Common')->prefix('subscription-package')->middleware('auth')->group(function () {
+    // Get subscription packages
+    Route::get('/', 'SubscriptionPackageController@index');
+    Route::post('subscribe', 'SubscriptionPackageController@subscribe');
+
+});

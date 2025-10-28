@@ -94,6 +94,10 @@ class User extends Authenticatable implements CanSendOTPContract
         'gender',
         'is_bid_app',
         'stripe_customer_id',
+        'stripe_subscription_id',
+        'subscription_ends_at',
+        'subscription_package_id',
+        'customer_card_id'
     ];
 
     /**
@@ -321,6 +325,15 @@ class User extends Authenticatable implements CanSendOTPContract
     public function driver()
     {
         return $this->hasOne(Driver::class, 'user_id', 'id');
+    }
+
+    public function subscription_package(){
+        return $this->belongsTo(SubscriptionPackage::class, 'subscription_package_id', 'id');
+    }
+    
+    public function customer_card(){
+        return $this->hasMany(CustomerCard::class, 'customer_card_id', 'id');
+        
     }
 
     public function ownerWallet()

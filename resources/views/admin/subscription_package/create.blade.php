@@ -27,13 +27,13 @@
                             @csrf
 
                             <div class="row">
-
+                                <input type="hidden" name="id" value="{{ isset($subscription_package)?$subscription_package->id:'' }}">
                                 <div class="col-sm-6">
                                     <div class="form-group">
-                                        <label for="title">@lang('view_pages.title') <span class="text-danger">*</span></label>
+                                        <label for="title">Title <span class="text-danger">*</span></label>
                                         <input class="form-control" type="text" id="title" name="title"
-                                            value="{{ old('title') }}" required
-                                            placeholder="@lang('view_pages.enter') @lang('view_pages.title')">
+                                            value="{{ isset($subscription_package)?$subscription_package->title:old('title') }}" required
+                                            placeholder="@lang('view_pages.enter') Title">
                                         <span class="text-danger">{{ $errors->first('title') }}</span>
                                     </div>
                                 </div>
@@ -41,7 +41,7 @@
                                     <div class="form-group">
                                         <label for="description">@lang('view_pages.description') <span class="text-danger">*</span></label>
                                         <input class="form-control" type="text" id="description" name="description"
-                                            value="{{ old('description') }}" required
+                                            value="{{ isset($subscription_package)?$subscription_package->description:old('description') }}" required
                                             placeholder="@lang('view_pages.enter') @lang('view_pages.description')">
                                         <span class="text-danger">{{ $errors->first('description') }}</span>
                                     </div>
@@ -50,7 +50,7 @@
                                     <div class="form-group">
                                         <label for="price">@lang('view_pages.price') <span class="text-danger">*</span></label>
                                         <input class="form-control" type="text" id="price" name="price"
-                                            value="{{ old('price') }}" required
+                                            value="{{ isset($subscription_package)?$subscription_package->price:old('price') }}" required
                                             placeholder="@lang('view_pages.enter') @lang('view_pages.price')">
                                         <span class="text-danger">{{ $errors->first('price') }}</span>
                                     </div>
@@ -58,11 +58,11 @@
 
                                 <div class="col-sm-6">
                                     <div class="form-group">
-                                        <label for="duration_type">Title <span class="text-danger">*</span></label>
+                                        <label for="duration_type">Package Type <span class="text-danger">*</span></label>
                                         <select name="duration_type" id="duration_type" class="form-control" required>
-                                            <option value="week" {{ old('duration_type') == 'week' ? 'selected' : '' }}>Weekly</option>
-                                            <option value="month" {{ old('duration_type') == 'month' ? 'selected' : '' }}>Monthly</option>
-                                            <option value="year" {{ old('duration_type') == 'year' ? 'selected' : '' }}>Yearly</option>
+                                            <option value="week" {{ (isset($subscription_package)? ($subscription_package->duration_type == 'week' ? 'selected' : ''): '') }}>Weekly</option>
+                                            <option value="month" {{ isset($subscription_package)? ($subscription_package->duration_type == 'month' ? 'selected' : ''):'' }}>Monthly</option>
+                                            <option value="year" {{ isset($subscription_package)?($subscription_package->duration_type == 'year' ? 'selected' : ''):'' }}>Yearly</option>
                                         </select>
                                         <span class="text-danger">{{ $errors->first('duration_type') }}</span>
                                     </div>
