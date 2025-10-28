@@ -861,7 +861,7 @@ class DriverEndRequestController extends BaseController
             if ($extra > 0) {
 
                 Log::info('--- Stripe Extra Charge Calculation ---', [
-                    'final_amount_x100' => $finalAmount * 100,
+                    'final_amount_x100' => (int) round($finalAmount * 100),
                     'hold_amount'       => $paymentIntent->amount,
                     'extra_to_charge'   => $extra,
                 ]);
@@ -895,7 +895,7 @@ class DriverEndRequestController extends BaseController
                 return $this->respondFailed('Invalid amount. Must be greater than zero.');
             }
             PaymentIntent::create([
-                'amount' => $request_detail->final_amount * 100,
+                'amount' => (int) round($request_detail->final_amount * 100),
                 'currency' => strtolower($request_detail->requested_currency_code),
                 'automatic_payment_methods' => ['enabled' => true],
                 'description' => 'One-time payment for Ride Service',

@@ -147,7 +147,7 @@ class CreateRequestController extends BaseController
             }
             $customer_card = CustomerCard::find($request->customer_card_id);
             $payment_intent = PaymentIntent::create([
-                'amount' => $request->request_eta_amount * 100, // in paisa
+                'amount' => (int) round($request->request_eta_amount * 100), // in paisa
                 'currency' => strtolower($currency_code),
                 'customer' => $user_detail->stripe_customer_id,
                 'payment_method' => $customer_card->payment_method_id,
