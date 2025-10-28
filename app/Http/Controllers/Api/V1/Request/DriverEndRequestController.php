@@ -822,7 +822,7 @@ class DriverEndRequestController extends BaseController
             'request_id'             => $request->request_id,
             'request_detail_id'      => optional($request_detail)->id,
             'payment_method'         => $request_detail->payment_method,
-            'final_amount'           => $request_detail->final_amount,
+            'final_amount'           => $request->final_amount,
             'stripe_payment_intent'  => $request_detail->stripe_payment_intent_id,
             'currency'               => $request_detail->requested_currency_code,
         ]);
@@ -847,7 +847,7 @@ class DriverEndRequestController extends BaseController
                 'intent_amount'    => $paymentIntent->amount,
                 'intent_status'    => $paymentIntent->status,
             ]);
-            $finalAmount = (float) $request_detail->final_amount;
+            $finalAmount = (float) $request->final_amount;
             $holdAmount  = (float) $paymentIntent->amount;
             Log::info('--- Stripe PaymentIntent ---', [
                 'amount'  => $paymentIntent->amount,
