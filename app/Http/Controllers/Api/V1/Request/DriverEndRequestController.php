@@ -835,7 +835,9 @@ class DriverEndRequestController extends BaseController
 
             $paymentIntent = PaymentIntent::retrieve($request_detail->stripe_payment_intent_id);
             $finalAmount = $request_detail->final_amount;
-
+            if (empty($finalAmount) || $finalAmount < 0.01) {
+                return $this->respondFailed('Invalid amount. Must be greater than zero.');
+            }
             if ($finalAmount * 100 > $paymentIntent->amount) {
                 // Capture existing hold first
                 $paymentIntent->capture();
@@ -863,6 +865,9 @@ class DriverEndRequestController extends BaseController
                 Stripe::setApiKey(get_settings(Settings::STRIPE_TEST_SECRET_KEY));
             } else {
                 return $this->respondFailed('Stripe is not enabled');
+            }
+            if (empty($request_detail->final_amount) || $request_detail->final_amount < 0.01) {
+                return $this->respondFailed('Invalid amount. Must be greater than zero.');
             }
             PaymentIntent::create([
                 'amount' => $request_detail->final_amount * 100,
