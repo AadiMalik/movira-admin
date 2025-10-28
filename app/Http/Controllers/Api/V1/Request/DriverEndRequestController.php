@@ -817,7 +817,15 @@ class DriverEndRequestController extends BaseController
 
 
         $request_detail = $driver->requestDetail()->where('id', $request->request_id)->first();
-
+        Log::info('--- Stripe Payment Confirmation Input ---', [
+            'driver_id'              => auth()->id(),
+            'request_id'             => $request->request_id,
+            'request_detail_id'      => optional($request_detail)->id,
+            'payment_method'         => $request_detail->payment_method,
+            'final_amount'           => $request_detail->final_amount,
+            'stripe_payment_intent'  => $request_detail->stripe_payment_intent_id,
+            'currency'               => $request_detail->requested_currency_code,
+        ]);
         // Throw an exception if the user is not authorised for this request
         if (!$request_detail) {
             $this->throwAuthorizationException();
@@ -834,16 +842,33 @@ class DriverEndRequestController extends BaseController
             }
 
             $paymentIntent = PaymentIntent::retrieve($request_detail->stripe_payment_intent_id);
-            $finalAmount = $request_detail->final_amount;
+            Log::info('--- Stripe PaymentIntent Details ---', [
+                'stripe_intent_id' => $paymentIntent->id,
+                'intent_amount'    => $paymentIntent->amount,
+                'intent_status'    => $paymentIntent->status,
+            ]);
+            $finalAmount = (float) $request_detail->final_amount;
+            $holdAmount  = (float) $paymentIntent->amount;
+            Log::info('--- Stripe PaymentIntent ---', [
+                'amount'  => $paymentIntent->amount,
+                'status'  => $paymentIntent->status,
+                'id'      => $paymentIntent->id,
+            ]);
+            $extra = ($finalAmount * 100) - $holdAmount;
             if (empty($finalAmount) || $finalAmount < 0.01) {
                 return $this->respondFailed('Invalid amount. Must be greater than zero.');
             }
-            if ($finalAmount * 100 > $paymentIntent->amount) {
+            if ($extra > 0) {
+
+                Log::info('--- Stripe Extra Charge Calculation ---', [
+                    'final_amount_x100' => $finalAmount * 100,
+                    'hold_amount'       => $paymentIntent->amount,
+                    'extra_to_charge'   => $extra,
+                ]);
                 // Capture existing hold first
                 $paymentIntent->capture();
                 $customer_card = CustomerCard::find($request_detail->customer_card_id);
                 // Charge extra separately
-                $extra = ($finalAmount * 100) - $paymentIntent->amount;
                 PaymentIntent::create([
                     'amount' => $extra,
                     'currency' => strtolower($request_detail->requested_currency_code),
