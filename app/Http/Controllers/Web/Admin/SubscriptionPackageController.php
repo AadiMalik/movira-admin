@@ -76,7 +76,7 @@ class SubscriptionPackageController extends Controller
             $interval = $request->duration_type;
             $price = Price::create([
                 'unit_amount' => $request->price * 100,
-                'currency' => strtolower(get_settings(Settings::CURRENCY)), // change if needed
+                'currency' => 'usd',
                 'recurring' => ['interval' => $interval],
                 'product' => $product->id,
             ]);
@@ -105,7 +105,7 @@ class SubscriptionPackageController extends Controller
                 $interval = $request->duration_type;
                 $price = Price::create([
                     'unit_amount' => $request->price * 100,
-                    'currency' => strtolower(get_settings(Settings::CURRENCY)),
+                    'currency' => 'usd',
                     'recurring' => ['interval' => $interval],
                     'product' => $subscription->stripe_package_id,
                 ]);
