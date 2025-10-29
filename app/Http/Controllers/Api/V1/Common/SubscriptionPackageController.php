@@ -92,12 +92,15 @@ class SubscriptionPackageController extends BaseController
                   'expand' => ['latest_invoice.payment_intent'],
             ]);
 
+            $subscription_current = Subscription::retrieve($subscription->id);
+            $periodEnd = $subscription_current->current_period_end
+                  ?? $subscription_current->trial_end;
             // ✅ STEP 6: Save subscription info in users table
             $user->update([
                   'stripe_subscription_id'   => $subscription->id,
                   'subscription_package_id'  => $package->id,
                   'customer_card_id'         => $customerCard->id,
-                  'subscription_ends_at'     => Carbon::createFromTimestamp($subscription->current_period_end),
+                  'subscription_ends_at'     => Carbon::createFromTimestamp($periodEnd),
             ]);
 
             // ✅ STEP 7: Save invoice details
@@ -125,9 +128,10 @@ class SubscriptionPackageController extends BaseController
             ]);
       }
 
-      public function subscriptionCancel(){
+      public function subscriptionCancel()
+      {
             $user = auth()->user();
-            if($user->stripe_subscription_id){
+            if ($user->stripe_subscription_id) {
                   $subscription = Subscription::retrieve($user->stripe_subscription_id);
                   $subscription->cancel();
             }
