@@ -124,4 +124,13 @@ class SubscriptionPackageController extends BaseController
                   'message' => 'Subscription created successfully',
             ]);
       }
+
+      public function subscriptionCancel(){
+            $user = auth()->user();
+            if($user->stripe_subscription_id){
+                  $subscription = Subscription::retrieve($user->stripe_subscription_id);
+                  $subscription->cancel();
+            }
+            return $this->respondSuccess('Subscription cancelled successfully');
+      }
 }

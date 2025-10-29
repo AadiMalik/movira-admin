@@ -84,5 +84,6 @@ Route::namespace('Common')->prefix('subscription-package')->middleware('auth')->
     // Get subscription packages
     Route::get('/', 'SubscriptionPackageController@index');
     Route::post('subscribe', 'SubscriptionPackageController@subscribe');
+    Route::get('cancel', 'SubscriptionPackageController@subscriptionCancel');
 
 });
