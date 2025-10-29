@@ -89,10 +89,10 @@ class DriverProfileTransformer extends Transformer
             'my_route_lng'=>$user->my_route_lng,
             'my_route_address'=>$user->my_route_address,
             'enable_my_route_booking'=>$user->enable_my_route_booking,
-            'stripe_subscription_id'=>$user->stripe_subscription_id,
-            'subscription_ends_at'=>$user->subscription_ends_at,
-            'subscription_package_id'=>$user->subscription_package_id,
-            'customer_card_id'=>$user->customer_card_id,
+            'stripe_subscription_id'=>$user->user->stripe_subscription_id,
+            'subscription_ends_at'=>$user->user->subscription_ends_at,
+            'subscription_package_id'=>$user->user->subscription_package_id,
+            'customer_card_id'=>$user->user->customer_card_id,
             'role'=>'driver'
         ];
 
