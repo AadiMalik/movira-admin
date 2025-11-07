@@ -20,9 +20,13 @@ class CountryController extends ApiController
      */
     public function index()
     {
-        $countriesQuery = Country::active();
+        // $countriesQuery = Country::active();
 
-        $countries = filter($countriesQuery, new CountryTransformer)->defaultSort('name')->get();
+        $countries = Country::active()->orderBy('name')->get();
+
+        if ($countries->isEmpty()) {
+            return $this->respondNotFound('No countries found');
+        }
 
         return $this->respondOk($countries);
     }
