@@ -19,10 +19,11 @@ use App\Models\Payment\DriverSubscription;
 use App\Models\Request\DriverRejectedRequest;
 use Grimzy\LaravelMysqlSpatial\Eloquent\SpatialTrait;
 use App\Models\Admin\DriverVehicleType;
+use App\Models\Country;
 
 class Driver extends Model
 {
-    use HasActive,SoftDeletes,SearchableTrait,SpatialTrait;
+    use HasActive, SoftDeletes, SearchableTrait, SpatialTrait;
     /**
      * The table associated with the model.
      *
@@ -36,15 +37,65 @@ class Driver extends Model
      * @var array
      */
     protected $fillable = [
-        'user_id','owner_id','service_location_id', 'name','mobile','email','address','state','city','country','postal_code','gender','vehicle_type','car_make','car_model','car_color','car_number','today_trip_count','total_accept','total_reject','acceptance_ratio','last_trip_date','active','approve','available','reason','uuid','fleet_id','vehicle_year','route_coordinates','my_route_address','my_route_lat','my_route_lng','enable_my_route_booking','custom_make','custom_model'
+        'user_id',
+        'owner_id',
+        'service_location_id',
+        'name',
+        'mobile',
+        'email',
+        'address',
+        'state',
+        'city',
+        'country',
+        'postal_code',
+        'gender',
+        'vehicle_type',
+        'car_make',
+        'car_model',
+        'car_color',
+        'car_number',
+        'today_trip_count',
+        'total_accept',
+        'total_reject',
+        'acceptance_ratio',
+        'last_trip_date',
+        'active',
+        'approve',
+        'available',
+        'reason',
+        'uuid',
+        'fleet_id',
+        'vehicle_year',
+        'route_coordinates',
+        'my_route_address',
+        'my_route_lat',
+        'my_route_lng',
+        'enable_my_route_booking',
+        'custom_make',
+        'custom_model',
+        'is_tru_approve',
+        'is_tru_send',
+        'order_number',
+        'tru_system_order_id',
+        'request_xml',
+        'response_xml',
+        'tru_status'
     ];
     /**
-    * The accessors to append to the model's array form.
-    *
-    * @var array
-    */
+     * The accessors to append to the model's array form.
+     *
+     * @var array
+     */
     protected $appends = [
-        'profile_picture','vehicle_type_name','car_make_name','car_model_name','rating','no_of_ratings','timezone','vehicle_type_image','vehicle_type_icon_for'
+        'profile_picture',
+        'vehicle_type_name',
+        'car_make_name',
+        'car_model_name',
+        'rating',
+        'no_of_ratings',
+        'timezone',
+        'vehicle_type_image',
+        'vehicle_type_icon_for'
     ];
 
 
@@ -54,7 +105,8 @@ class Driver extends Model
      * @var array
      */
     public $includes = [
-        'driverDetail','requestDetail'
+        'driverDetail',
+        'requestDetail'
     ];
 
     protected $spatialFields = [
@@ -83,11 +135,11 @@ class Driver extends Model
     ];
 
     /**
-    * Get the Profile image full file path.
-    *
-    * @param string $value
-    * @return string
-    */
+     * Get the Profile image full file path.
+     *
+     * @param string $value
+     * @return string
+     */
     public function getProfilePictureAttribute()
     {
         return $this->user->profile_picture;
@@ -95,31 +147,31 @@ class Driver extends Model
 
     public function getTimezoneAttribute()
     {
-        return $this->user->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
+        return $this->user->timezone ?: env('SYSTEM_DEFAULT_TIMEZONE');
     }
 
     public function getVehicleTypeNameAttribute()
     {
-        return $this->vehicleType?$this->vehicleType->name:null;
+        return $this->vehicleType ? $this->vehicleType->name : null;
     }
     public function getVehicleTypeImageAttribute()
     {
-        return $this->vehicleType?$this->vehicleType->icon:null;
+        return $this->vehicleType ? $this->vehicleType->icon : null;
     }
     public function getCarMakeNameAttribute()
     {
-        if($this->carMake()->exists()){
-            return $this->carMake?$this->carMake->name:null;            
-        }else{
+        if ($this->carMake()->exists()) {
+            return $this->carMake ? $this->carMake->name : null;
+        } else {
 
             return $this->custom_make;
         }
     }
     public function getCarModelNameAttribute()
     {
-        if($this->carModel()->exists()){
-            return $this->carModel?$this->carModel->name:null;
-        }else{
+        if ($this->carModel()->exists()) {
+            return $this->carModel ? $this->carModel->name : null;
+        } else {
             return $this->custom_model;
         }
     }
@@ -144,10 +196,10 @@ class Driver extends Model
         return $this->hasMany(DriverSubscription::class, 'driver_id', 'id');
     }
 
-    public function currentRide(){
+    public function currentRide()
+    {
 
-        return $this->requestDetail()->where('is_completed',false)->where('is_cancelled',false)->exists();
-        
+        return $this->requestDetail()->where('is_completed', false)->where('is_cancelled', false)->exists();
     }
     public function driverAvailabilities()
     {
@@ -166,12 +218,12 @@ class Driver extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'id');
-    } 
+    }
     public function serviceLocation()
     {
         return $this->belongsTo(ServiceLocation::class, 'service_location_id', 'id');
-    } 
-   public function owner()
+    }
+    public function owner()
     {
         return $this->belongsTo(Owner::class, 'owner_id', 'id');
     }
@@ -200,6 +252,10 @@ class Driver extends Model
     {
         return $this->hasOne(DriverDetail::class, 'driver_id', 'id');
     }
+    public function country_name()
+    {
+        return $this->belongsTo(Country::class, 'country', 'id');
+    }
 
     /**
      * The driver document associated with the user's id.
@@ -211,10 +267,10 @@ class Driver extends Model
         return $this->hasMany(DriverDocument::class, 'driver_id', 'id');
     }
     /**
-    * The driver wallet history associated with the driver's id.
-    *
-    * @return \Illuminate\Database\Eloquent\Relations\hasOne
-    */
+     * The driver wallet history associated with the driver's id.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\hasOne
+     */
     public function driverWalletHistory()
     {
         return $this->hasMany(DriverWalletHistory::class, 'user_id', 'id');
@@ -242,48 +298,48 @@ class Driver extends Model
     {
         return $this->hasOne(VehicleType::class, 'id', 'vehicle_type');
     }
-     public function getVehicleTypeIconForAttribute()
+    public function getVehicleTypeIconForAttribute()
     {
-        return $this->vehicleType?$this->vehicleType->icon_types_for:'taxi';
+        return $this->vehicleType ? $this->vehicleType->icon_types_for : 'taxi';
     }
 
     /**
-    * Get formated and converted timezone of user's created at.
-    *
-    * @param string $value
-    * @return string
-    */
+     * Get formated and converted timezone of user's created at.
+     *
+     * @param string $value
+     * @return string
+     */
     public function getConvertedCreatedAtAttribute()
     {
-        if ($this->created_at==null||!auth()->user()->exists()) {
+        if ($this->created_at == null || !auth()->user()->exists()) {
             return null;
         }
-        $timezone = auth()->user()->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
+        $timezone = auth()->user()->timezone ?: env('SYSTEM_DEFAULT_TIMEZONE');
         return Carbon::parse($this->created_at)->setTimezone($timezone)->format('jS M h:i A');
     }
     /**
-    * Get formated and converted timezone of user's created at.
-    *
-    * @param string $value
-    * @return string
-    */
+     * Get formated and converted timezone of user's created at.
+     *
+     * @param string $value
+     * @return string
+     */
     public function getConvertedUpdatedAtAttribute()
     {
-        if ($this->updated_at==null||!auth()->user()->exists()) {
+        if ($this->updated_at == null || !auth()->user()->exists()) {
             return null;
         }
-        $timezone = auth()->user()->timezone?:env('SYSTEM_DEFAULT_TIMEZONE');
+        $timezone = auth()->user()->timezone ?: env('SYSTEM_DEFAULT_TIMEZONE');
         return Carbon::parse($this->updated_at)->setTimezone($timezone)->format('jS M h:i A');
     }
 
-     public function privilegedVehicle()
+    public function privilegedVehicle()
     {
         return $this->hasMany(DriverPrivilegedVehicle::class, 'driver_id', 'id');
     }
 
     public function rating($user_id)
     {
-        $rate=  User::where('id',$user_id)->first();
+        $rate =  User::where('id', $user_id)->first();
         return $rate->rating;
     }
 
@@ -291,5 +347,4 @@ class Driver extends Model
     {
         return $this->hasMany(DriverEnabledRoutes::class, 'driver_id', 'id');
     }
-
 }

@@ -256,6 +256,7 @@ Route::middleware('auth:web')->group(function () {
         Route::get('/fetch/approved', 'DriverController@getApprovedDrivers');
 
         Route::get('/waiting-for-approval', 'DriverController@approvalPending');
+        Route::get('/{id}/send-tru', 'DriverController@sendToTruDiligence');
         // Route::get('/fetch', 'DriverController@getAllDrivers');
             Route::get('/fetch/approval-pending-drivers', 'DriverController@getApprovalPendingDrivers');
         Route::get('/fetch/driver-ratings', 'DriverController@fetchDriverRatings');

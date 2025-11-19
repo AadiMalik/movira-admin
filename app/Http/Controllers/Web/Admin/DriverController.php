@@ -44,6 +44,7 @@ use App\Jobs\Notifications\SendPushNotification;
 use App\Imports\DriversImport;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Admin\DriverVehicleType;
+use Illuminate\Support\Facades\Http;
 
 /**
  * @resource Driver
@@ -84,7 +85,7 @@ class DriverController extends BaseController
      *
      * @param \App\Models\Admin\Driver $driver
      */
-    public function __construct(Driver $driver, ImageUploaderContract $imageUploader, User $user,Country $country,Database $database)
+    public function __construct(Driver $driver, ImageUploaderContract $imageUploader, User $user, Country $country, Database $database)
     {
         $this->driver = $driver;
         $this->imageUploader = $imageUploader;
@@ -97,9 +98,9 @@ class DriverController extends BaseController
     }
 
     /**
-    * Get all drivers
-    * @return \Illuminate\Http\JsonResponse
-    */
+     * Get all drivers
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function index()
     {
         $page = trans('pages_names.drivers');
@@ -108,17 +109,17 @@ class DriverController extends BaseController
         $services = ServiceLocation::whereActive(true)->companyKey()->get();
         $approved = Driver::where('approve', true)->where('owner_id', null)->get();
         // dd($approved);
-        return view('admin.drivers.index', compact('page', 'main_menu', 'sub_menu','services', 'approved'));
+        return view('admin.drivers.index', compact('page', 'main_menu', 'sub_menu', 'services', 'approved'));
     }
 
     /**
-    * Fetch approved drivers
-    */
+     * Fetch approved drivers
+     */
     public function getApprovedDrivers(QueryFilterContract $queryFilter)
     {
 
         //old coding
-       /* if (access()->hasRole(RoleSlug::SUPER_ADMIN)) {
+        /* if (access()->hasRole(RoleSlug::SUPER_ADMIN)) {
 
             $query = Driver::where('approve', true)->where('owner_id', null)->orderBy('created_at', 'desc');
                 if (env('APP_FOR')=='demo') {
@@ -144,18 +145,18 @@ class DriverController extends BaseController
 
             if (request()->has('active') && request()->filled('active')) {
                 $active = request('active');
-                $query->where('active',$active);
+                $query->where('active', $active);
             }
             if (request()->has('approve') && request()->filled('approve')) {
                 $active = request('approve');
-                $query->where('approve',$active);
+                $query->where('approve', $active);
             }
             if (request()->has('available') && request()->filled('available')) {
                 $active = request('available');
-                $query->where('available',$active);
+                $query->where('available', $active);
             }
 
-            if (env('APP_FOR')=='demo') {
+            if (env('APP_FOR') == 'demo') {
                 $query = Driver::where('approve', true)->where('owner_id', null)->whereHas('user', function ($query) {
                     $query->whereCompanyKey(auth()->user()->company_key);
                 })->orderBy('created_at', 'desc');
@@ -164,19 +165,17 @@ class DriverController extends BaseController
 
             $this->validateAdmin();
             $query = $this->driver->where('approve', true)->where('owner_id', null)->where('service_location_id', auth()->user()->admin->service_location_id)->orderBy('created_at', 'desc');
-
         }
 
         $query->where('owner_id', null)->where('approve', true)->orderBy('created_at', 'desc');
 
-        if(request()->has('active') || request()->has('approve') || request()->has('available') || request()->has('area')){
+        if (request()->has('active') || request()->has('approve') || request()->has('available') || request()->has('area')) {
             $results = $query->paginate();
-        }else{
+        } else {
             $results = $queryFilter->builder($query)->customFilter(new DriverFilter)->paginate();
         }
 
         return view('admin.drivers._drivers', compact('results'))->render();
-
     }
     public function approvalPending()
     {
@@ -184,33 +183,161 @@ class DriverController extends BaseController
         $main_menu = 'drivers';
         $sub_menu = 'driver_approval_pending';
         $services = ServiceLocation::whereActive(true)->companyKey()->get();
-        return view('admin.drivers.pending-for-approval', compact('page', 'main_menu', 'sub_menu','services'));
+        return view('admin.drivers.pending-for-approval', compact('page', 'main_menu', 'sub_menu', 'services'));
     }
     public function getApprovalPendingDrivers(QueryFilterContract $queryFilter)
     {
-         if (access()->hasRole(RoleSlug::SUPER_ADMIN)) {
-                $query = Driver::where('approve', false)->where('owner_id', null)->orderBy('created_at', 'desc');
+        if (access()->hasRole(RoleSlug::SUPER_ADMIN)) {
+            $query = Driver::where('approve', false)->where('owner_id', null)->orderBy('created_at', 'desc');
 
-                if (env('APP_FOR')=='demo') {
-                    $query = Driver::where('approve', false)->where('owner_id', null)->whereHas('user', function ($query) {
-                        $query->whereCompanyKey(auth()->user()->company_key);
-                    })->orderBy('created_at', 'desc');
-                }
-            } else {
-                $this->validateAdmin();
-                $query = $this->driver->where('approve', false)->where('owner_id', null)->where('service_location_id', auth()->user()->admin->service_location_id)->orderBy('created_at', 'desc');
-                // $query = Driver::orderBy('created_at', 'desc');
+            if (env('APP_FOR') == 'demo') {
+                $query = Driver::where('approve', false)->where('owner_id', null)->whereHas('user', function ($query) {
+                    $query->whereCompanyKey(auth()->user()->company_key);
+                })->orderBy('created_at', 'desc');
             }
-            $results = $queryFilter->builder($query)->customFilter(new DriverFilter)->paginate();
+        } else {
+            $this->validateAdmin();
+            $query = $this->driver->where('approve', false)->where('owner_id', null)->where('service_location_id', auth()->user()->admin->service_location_id)->orderBy('created_at', 'desc');
+            // $query = Driver::orderBy('created_at', 'desc');
+        }
+        $results = $queryFilter->builder($query)->customFilter(new DriverFilter)->paginate();
 
-            return view('admin.drivers._drivers', compact('results'))->render();
+        return view('admin.drivers._drivers', compact('results'))->render();
+    }
+    public function sendToTruDiligence($driverId)
+    {
+        $driver = Driver::with('country_name')->findOrFail($driverId);
 
+        // 1️⃣ Defaults
+        $country      = $driver->country_name->name ?? 'USA';
+        $state        = $driver->state ?? 'Oklahoma';
+        $account_code = env('TRU_ACCOUNT_CODE', 'movira');
+        $username     = env('TRU_USERNAME', 'integration');
+        $password     = env('TRU_PASSWORD', 'Checkthem25!');
+        $mode         = env('TRU_MODE', 'TEST'); // TEST, DRAFT, PROD
+
+        // 2️⃣ Build XML manually as string (no extra whitespace/newlines before <?xml)
+        $xmlString = '<?xml version="1.0" encoding="UTF-8"?>' .
+            '<NewOrder>' .
+            '<login>' .
+            '<account>' . $account_code . '</account>' .
+            '<username>' . $username . '</username>' .
+            '<password>' . $password . '</password>' .
+            '</login>' .
+            '<mode>' . $mode . '</mode>' .
+            '<placeOrder number="' . $driver->id . '">' .
+            '<subject>' .
+            '<name_first>' . ($driver->name ?: 'U') . '</name_first>' .
+            '<name_last>' . ($driver->name ?: 'U') . '</name_last>' .
+            '<email>' . ($driver->email ?: 'U') . '</email>' .
+            '<phone>' . ($driver->mobile ?: 'U') . '</phone>' .
+            '<address>' . ($driver->address ?: 'U') . '</address>' .
+            '<city>' . ($driver->city ?: 'U') . '</city>' .
+            '<state>' . $state . '</state>' .
+            '<zip>' . ($driver->postal_code ?: '00000') . '</zip>' .
+            '<country>' . $country . '</country>' .
+            '</subject>' .
+            '<subOrder type="County_criminal">' .
+            '<package>A La Carte</package>' . // optional
+            '</subOrder>' .
+            '</placeOrder>' .
+            '</NewOrder>';
+
+
+        $xmlString = trim($xmlString); // ensure no whitespace before <?xml
+
+        // 3️⃣ Save request XML before sending
+        $driver->request_xml = $xmlString;
+        $driver->tru_status = 'pending';
+        $driver->save();
+
+        // 4️⃣ Send XML using cURL
+        try {
+            $ch = curl_init('https://trudiligence.bgsecured.com/c/p/researcherxml');
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $xmlString);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: text/xml; charset=UTF-8',
+                'Accept: text/xml',
+                'Content-Length: ' . strlen($xmlString)
+            ]);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1); // enforce HTTP 1.1
+            $responseXml = curl_exec($ch);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            if ($curlError) {
+                $driver->response_xml = $curlError;
+                $driver->tru_status = 'failed';
+                $driver->save();
+                return back()->with('error', 'TruDiligence request failed: ' . $curlError);
+            }
+
+            // 5️⃣ Save response XML
+            $driver->response_xml = $responseXml;
+
+            // 6️⃣ Extract order number if available
+            $result = $this->extractTruOrderNumber($responseXml);
+            if ($result) {
+                $driver->order_number = $result['orderNumber']; // your order number
+                $driver->tru_system_order_id = $result['orderID']; // optional, save system ID
+                $driver->is_tru_send = true;
+                $driver->tru_status = 'success';
+                $driver->is_tru_approve = 1;
+            } else {
+                $driver->tru_status = 'failed';
+            }
+
+            $driver->save();
+            return back()->with('success', 'TruDiligence request sent successfully.');
+        } catch (\Exception $e) {
+            $driver->response_xml = $e->getMessage();
+            $driver->tru_status = 'failed';
+            $driver->save();
+            return back()->with('error', 'TruDiligence request failed: ' . $e->getMessage());
+        }
     }
 
+
+    private function extractTruOrderNumber($xml)
+    {
+        try {
+            $simple = simplexml_load_string($xml);
+
+            // Check for <order> node
+            if (isset($simple->order)) {
+                $orderNode = $simple->order;
+                $orderNumber = (string)$orderNode['number']; // your submitted order number
+                $orderID     = (string)$orderNode['orderID']; // system order ID
+                $subOrders   = [];
+
+                foreach ($orderNode->subOrder as $sub) {
+                    $subOrders[] = [
+                        'type'       => (string)$sub['type'],
+                        'suborderID' => (string)$sub['suborderID']
+                    ];
+                }
+
+                return [
+                    'orderNumber' => $orderNumber,
+                    'orderID'     => $orderID,
+                    'subOrders'   => $subOrders
+                ];
+            }
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        return null;
+    }
+
+
+
     /**
-    * Create Driver View
-    *
-    */
+     * Create Driver View
+     *
+     */
     public function create()
     {
         $page = trans('pages_names.add_driver');
@@ -235,11 +362,11 @@ class DriverController extends BaseController
      * @param \App\Http\Requests\Admin\Driver\CreateDriverRequest $request
      * @return \Illuminate\Http\JsonResponse
      */
-  public function store(CreateDriverRequest $request)
+    public function store(CreateDriverRequest $request)
     {
         // dd($request);
 
-        $created_params = $request->only(['service_location_id', 'name','mobile','email','address','gender','vehicle_type','car_make','car_model','car_color','car_number']);
+        $created_params = $request->only(['service_location_id', 'name', 'mobile', 'email', 'address', 'gender', 'vehicle_type', 'car_make', 'car_model', 'car_color', 'car_number']);
 
 
         $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $request->email)->exists();
@@ -247,10 +374,10 @@ class DriverController extends BaseController
         $validate_exists_mobile = $this->user->belongsTorole(Role::DRIVER)->where('mobile', $request->mobile)->exists();
 
         if ($validate_exists_email) {
-            return redirect()->back()->withErrors(['email'=>'Provided email hs already been taken'])->withInput();
+            return redirect()->back()->withErrors(['email' => 'Provided email hs already been taken'])->withInput();
         }
         if ($validate_exists_mobile) {
-            return redirect()->back()->withErrors(['mobile'=>'Provided mobile hs already been taken'])->withInput();
+            return redirect()->back()->withErrors(['mobile' => 'Provided mobile hs already been taken'])->withInput();
         }
         // $created_params['vehicle_type'] = $request->input('type');
 
@@ -264,14 +391,15 @@ class DriverController extends BaseController
 
         $country_id = $service_location->country;
 
-        $user = $this->user->create(['name'=>$request->input('name'),
-            'email'=>$request->input('email'),
-            'mobile'=>$request->input('mobile'),
-            'mobile_confirmed'=>true,
+        $user = $this->user->create([
+            'name' => $request->input('name'),
+            'email' => $request->input('email'),
+            'mobile' => $request->input('mobile'),
+            'mobile_confirmed' => true,
             'password' => bcrypt($request->input('password')),
-            'company_key'=>auth()->user()->company_key,
-            'refferal_code'=> str_random(6),
-            'country'=>$country_id,
+            'company_key' => auth()->user()->company_key,
+            'refferal_code' => str_random(6),
+            'country' => $country_id,
         ]);
 
 
@@ -287,19 +415,20 @@ class DriverController extends BaseController
 
         $driver = $user->driver()->create($created_params);
 
-        $driver_detail_data = $request->only(['is_company_driver','company']);
+        $driver_detail_data = $request->only(['is_company_driver', 'company']);
 
         $driver_detail = $driver->driverDetail()->create($driver_detail_data);
 
 
-        foreach ($request->input('type') as $type)
-        {
-                DriverVehicleType::create(['driver_id' => $driver->id,
-                'vehicle_type' => $type,]);
+        foreach ($request->input('type') as $type) {
+            DriverVehicleType::create([
+                'driver_id' => $driver->id,
+                'vehicle_type' => $type,
+            ]);
         }
 
         // Create Empty Wallet to the driver
-        $driver_wallet = $driver->driverWallet()->create(['amount_added'=>0]);
+        $driver_wallet = $driver->driverWallet()->create(['amount_added' => 0]);
 
         $message = trans('succes_messages.driver_added_succesfully');
 
@@ -328,17 +457,16 @@ class DriverController extends BaseController
     }
 
 
-      public function update(Driver $driver, UpdateDriverRequest $request)
+    public function update(Driver $driver, UpdateDriverRequest $request)
     {
 
-      if(env('APP_FOR')=='demo'){
+        if (env('APP_FOR') == 'demo') {
             $message = 'you cannot perform this action. this is demo version';
-        return redirect('drivers')->with('success', $message);
-
+            return redirect('drivers')->with('success', $message);
         }
 
         // dd($request);
-        $updatedParams = $request->only(['service_location_id', 'name','mobile','email','gender','vehicle_type','car_make','car_model','car_color','car_number']);
+        $updatedParams = $request->only(['service_location_id', 'name', 'mobile', 'email', 'gender', 'vehicle_type', 'car_make', 'car_model', 'car_color', 'car_number']);
 
         $user = $driver->user;
         $validate_exists_email = $this->user->belongsTorole(Role::DRIVER)->where('email', $request->email)->where('id', '!=', $user->id)->exists();
@@ -346,53 +474,55 @@ class DriverController extends BaseController
         $validate_exists_mobile = $this->user->belongsTorole(Role::DRIVER)->where('mobile', $request->mobile)->where('id', '!=', $user->id)->exists();
 
         if ($validate_exists_email) {
-            return redirect()->back()->withErrors(['email'=>'Provided email hs already been taken'])->withInput();
+            return redirect()->back()->withErrors(['email' => 'Provided email hs already been taken'])->withInput();
         }
         if ($validate_exists_mobile) {
-            return redirect()->back()->withErrors(['mobile'=>'Provided mobile hs already been taken'])->withInput();
+            return redirect()->back()->withErrors(['mobile' => 'Provided mobile hs already been taken'])->withInput();
         }
 
 
         $user_param = $request->only(['profile']);
 
-        $user_param['profile']=null;
+        $user_param['profile'] = null;
 
         if ($uploadedFile = $this->getValidatedUpload('profile_picture', $request)) {
             $user_param['profile'] = $this->imageUploader->file($uploadedFile)
                 ->saveProfilePicture();
         }
 
-        $driver->update(['name'=>$request->input('name'),
-            'email'=>$request->input('email'),
-            'mobile'=>$request->input('mobile'),
-            'car_make'=>$request->input('car_make'),
-            'car_model'=>$request->input('car_model'),
-            'car_color'=>$request->input('car_color'),
-            'car_number'=>$request->input('car_number'),
+        $driver->update([
+            'name' => $request->input('name'),
+            'email' => $request->input('email'),
+            'mobile' => $request->input('mobile'),
+            'car_make' => $request->input('car_make'),
+            'car_model' => $request->input('car_model'),
+            'car_color' => $request->input('car_color'),
+            'car_number' => $request->input('car_number'),
             // 'vehicle_type'=>$request->input('type'),
-            'service_location_id'=>$request->service_location_id
+            'service_location_id' => $request->service_location_id
 
         ]);
 
-        $driver->user->update(['name'=>$request->input('name'),
-            'email'=>$request->input('email'),
-            'mobile'=>$request->input('mobile'),
-            'profile_picture'=>$user_param['profile']
+        $driver->user->update([
+            'name' => $request->input('name'),
+            'email' => $request->input('email'),
+            'mobile' => $request->input('mobile'),
+            'profile_picture' => $user_param['profile']
         ]);
 
         $driverVehicleTypes =  $driver->driverVehicleTypeDetail()->get();
 
         // dd($driverVehicleTypes);
 
-        foreach ($driverVehicleTypes as $driverVehicleType)
-        {
+        foreach ($driverVehicleTypes as $driverVehicleType) {
             $driverVehicleType->delete();
         }
 
-        foreach ($request->type as $type)
-        {
-             DriverVehicleType::create(['driver_id' => $driver->id,
-                'vehicle_type' => $type,]);
+        foreach ($request->type as $type) {
+            DriverVehicleType::create([
+                'driver_id' => $driver->id,
+                'vehicle_type' => $type,
+            ]);
         }
 
         $message = trans('succes_messages.driver_added_succesfully');
@@ -413,7 +543,7 @@ class DriverController extends BaseController
     public function toggleApprove(Driver $driver, $approval_status)
     {
 
-        $status = (boolean)$approval_status;
+        $status = (bool)$approval_status;
 
         if ($status) {
             $err = false;
@@ -423,7 +553,7 @@ class DriverController extends BaseController
 
             if ($neededDoc != $uploadedDoc) {
                 // $message = trans('succes_messages.driver_document_not_uploaded');
-                return redirect('drivers/document/view/'.$driver->id);
+                return redirect('drivers/document/view/' . $driver->id);
             }
 
             foreach ($driver->driverDocument as $driverDoc) {
@@ -435,14 +565,14 @@ class DriverController extends BaseController
             if ($err) {
                 $message = trans('succes_messages.driver_document_not_approved');
                 // return redirect('drivers')->with('warning', $message);
-                return redirect('drivers/document/view/'.$driver->id);
+                return redirect('drivers/document/view/' . $driver->id);
             }
             $driver->update([
-            'reason' => null
-        ]);
+                'reason' => null
+            ]);
         }
 
-        $this->database->getReference('drivers/driver_'.$driver->id)->update(['approve'=>(int)$status,'updated_at'=> Database::SERVER_TIMESTAMP]);
+        $this->database->getReference('drivers/driver_' . $driver->id)->update(['approve' => (int)$status, 'updated_at' => Database::SERVER_TIMESTAMP]);
 
         $driver->update([
             'approve' => $status
@@ -451,14 +581,14 @@ class DriverController extends BaseController
         $message = trans('succes_messages.driver_approve_status_changed_succesfully');
         $user = User::find($driver->user_id);
         if ($status) {
-            $title = trans('push_notifications.driver_approved',[],$user->lang);
-            $body = trans('push_notifications.driver_approved_body',[],$user->lang);
-            $push_data = ['notification_enum'=>PushEnums::DRIVER_ACCOUNT_APPROVED];
+            $title = trans('push_notifications.driver_approved', [], $user->lang);
+            $body = trans('push_notifications.driver_approved_body', [], $user->lang);
+            $push_data = ['notification_enum' => PushEnums::DRIVER_ACCOUNT_APPROVED];
             $socket_success_message = PushEnums::DRIVER_ACCOUNT_APPROVED;
         } else {
-            $title = trans('push_notifications.driver_declined_title',[],$user->lang);
-            $body = trans('push_notifications.driver_declined_body',[],$user->lang);
-            $push_data = ['notification_enum'=>PushEnums::DRIVER_ACCOUNT_DECLINED];
+            $title = trans('push_notifications.driver_declined_title', [], $user->lang);
+            $body = trans('push_notifications.driver_declined_body', [], $user->lang);
+            $push_data = ['notification_enum' => PushEnums::DRIVER_ACCOUNT_DECLINED];
             $socket_success_message = PushEnums::DRIVER_ACCOUNT_DECLINED;
         }
 
@@ -475,7 +605,7 @@ class DriverController extends BaseController
 
         // dispatch(new NotifyViaMqtt('approval_status_'.$driver_details->id, json_encode($socket_data), $driver_details->id));
 
-        dispatch(new SendPushNotification($user,$title,$body));
+        dispatch(new SendPushNotification($user, $title, $body));
 
         return redirect('drivers')->with('success', $message);
     }
@@ -492,11 +622,9 @@ class DriverController extends BaseController
 
     public function delete(Driver $driver)
     {
-        if(env('APP_FOR')=='demo'){
+        if (env('APP_FOR') == 'demo') {
 
-        return $message = 'you cannot delete the driver. this is demo version';
-
-
+            return $message = 'you cannot delete the driver. this is demo version';
         }
         $driver->user()->delete();
 
@@ -522,11 +650,11 @@ class DriverController extends BaseController
         return 'success';
     }
 
-   public function DriverTripRequestIndex(Driver $driver)
+    public function DriverTripRequestIndex(Driver $driver)
     {
 
-        $completedTrips = RequestRequest::where('driver_id',$driver->id)->companyKey()->whereIsCompleted(true)->count();
-        $cancelledTrips = RequestRequest::where('driver_id',$driver->id)->companyKey()->whereIsCancelled(true)->count();
+        $completedTrips = RequestRequest::where('driver_id', $driver->id)->companyKey()->whereIsCompleted(true)->count();
+        $cancelledTrips = RequestRequest::where('driver_id', $driver->id)->companyKey()->whereIsCancelled(true)->count();
 
         $card = [];
         $card['completed_trip'] = ['name' => 'trips_completed', 'display_name' => 'Completed Rides', 'count' => $completedTrips, 'icon' => 'fa fa-flag-checkered text-green'];
@@ -536,17 +664,17 @@ class DriverController extends BaseController
         $sub_menu = 'driver_details';
         $items = $driver->id;
 
-        return view('admin.drivers.driver-request-list', compact('card','main_menu','sub_menu','items'));
+        return view('admin.drivers.driver-request-list', compact('card', 'main_menu', 'sub_menu', 'items'));
     }
-     public function DriverTripRequest(QueryFilterContract $queryFilter, Driver $driver)
-        {
-            $items = $driver->id;
+    public function DriverTripRequest(QueryFilterContract $queryFilter, Driver $driver)
+    {
+        $items = $driver->id;
 
-             $query = RequestRequest::where('driver_id',$driver->id);
-            $results = $queryFilter->builder($query)->customFilter(new RequestFilter)->defaultSort('-created_at')->paginate();
+        $query = RequestRequest::where('driver_id', $driver->id);
+        $results = $queryFilter->builder($query)->customFilter(new RequestFilter)->defaultSort('-created_at')->paginate();
 
-            return view('admin.drivers.driver-request-list-view', compact('results','items'));
-        }
+        return view('admin.drivers.driver-request-list-view', compact('results', 'items'));
+    }
 
     public function DriverPaymentHistory(Driver $driver)
     {
@@ -555,32 +683,30 @@ class DriverController extends BaseController
         $item = $driver;
         // dd($item);
         $bankInfo = $driver->user->bankInfo;
-        $amount = DriverWallet::where('user_id',$driver->id)->first();
+        $amount = DriverWallet::where('user_id', $driver->id)->first();
 
         if ($amount == null) {
 
-         $card = [];
-         $card['total_amount'] = ['name' => 'total_amount', 'display_name' => 'Total Amount ', 'count' => "0", 'icon' => 'fa fa-flag-checkered text-green'];
-        $card['amount_spent'] = ['name' => 'amount_spent', 'display_name' => 'Spend Amount ', 'count' => "0", 'icon' => 'fa fa-ban text-red'];
-        $card['balance_amount'] = ['name' => 'balance_amount', 'display_name' => 'Balance Amount', 'count' => "0", 'icon' => 'fa fa-ban text-red'];
+            $card = [];
+            $card['total_amount'] = ['name' => 'total_amount', 'display_name' => 'Total Amount ', 'count' => "0", 'icon' => 'fa fa-flag-checkered text-green'];
+            $card['amount_spent'] = ['name' => 'amount_spent', 'display_name' => 'Spend Amount ', 'count' => "0", 'icon' => 'fa fa-ban text-red'];
+            $card['balance_amount'] = ['name' => 'balance_amount', 'display_name' => 'Balance Amount', 'count' => "0", 'icon' => 'fa fa-ban text-red'];
 
-         $history = UserWalletHistory::where('user_id',$user->id)->orderBy('created_at','desc')->paginate(10);
+            $history = UserWalletHistory::where('user_id', $user->id)->orderBy('created_at', 'desc')->paginate(10);
+        } else {
+            $card = [];
+            $card['total_amount'] = ['name' => 'total_amount', 'display_name' => 'Total Amount ', 'count' => $amount->amount_added, 'icon' => 'fa fa-flag-checkered text-green'];
+            $card['amount_spent'] = ['name' => 'amount_spent', 'display_name' => 'Spend Amount ', 'count' => $amount->amount_spent, 'icon' => 'fa fa-ban text-red'];
+            $card['balance_amount'] = ['name' => 'balance_amount', 'display_name' => 'Balance Amount', 'count' => $amount->amount_balance, 'icon' => 'fa fa-ban text-red'];
+
+
+            $history = DriverWalletHistory::where('user_id', $driver->id)->orderBy('created_at', 'desc')->paginate(10);
         }
-        else{
-         $card = [];
-        $card['total_amount'] = ['name' => 'total_amount', 'display_name' => 'Total Amount ', 'count' => $amount->amount_added, 'icon' => 'fa fa-flag-checkered text-green'];
-        $card['amount_spent'] = ['name' => 'amount_spent', 'display_name' => 'Spend Amount ', 'count' => $amount->amount_spent, 'icon' => 'fa fa-ban text-red'];
-        $card['balance_amount'] = ['name' => 'balance_amount', 'display_name' => 'Balance Amount', 'count' => $amount->amount_balance, 'icon' => 'fa fa-ban text-red'];
 
-
-         $history = DriverWalletHistory::where('user_id',$driver->id)->orderBy('created_at','desc')->paginate(10);
-
-          }
-
-        return view('admin.drivers.driver-payment-wallet', compact('card','main_menu','sub_menu','item','history','bankInfo'));
+        return view('admin.drivers.driver-payment-wallet', compact('card', 'main_menu', 'sub_menu', 'item', 'history', 'bankInfo'));
     }
 
-    public function StoreDriverPaymentHistory(AddDriverMoneyToWalletRequest $request,Driver $driver)
+    public function StoreDriverPaymentHistory(AddDriverMoneyToWalletRequest $request, Driver $driver)
     {
 
         $currency = get_settings(Settings::CURRENCY);
@@ -593,31 +719,31 @@ class DriverController extends BaseController
         $transaction_id = Str::random(6);
 
 
-            $wallet_model = new DriverWallet();
-            $wallet_add_history_model = new DriverWalletHistory();
-            $user_id = $driver->id;
+        $wallet_model = new DriverWallet();
+        $wallet_add_history_model = new DriverWalletHistory();
+        $user_id = $driver->id;
 
 
         $user_wallet = $wallet_model::firstOrCreate([
-            'user_id'=>$user_id]);
+            'user_id' => $user_id
+        ]);
         $user_wallet->amount_added += $request->amount;
         $user_wallet->amount_balance += $request->amount;
         $user_wallet->save();
 
         $wallet_add_history_model::create([
-            'user_id'=>$user_id,
-            'card_id'=>null,
-            'amount'=>$request->amount,
-            'transaction_id'=>$transaction_id,
-            'merchant'=>null,
-            'remarks'=>WalletRemarks::MONEY_DEPOSITED_TO_E_WALLET_FROM_ADMIN,
-            'is_credit'=>true]);
+            'user_id' => $user_id,
+            'card_id' => null,
+            'amount' => $request->amount,
+            'transaction_id' => $transaction_id,
+            'merchant' => null,
+            'remarks' => WalletRemarks::MONEY_DEPOSITED_TO_E_WALLET_FROM_ADMIN,
+            'is_credit' => true
+        ]);
 
 
-         $message = "money_added_successfully";
+        $message = "money_added_successfully";
         return redirect()->back()->with('success', $message);
-
-
     }
 
     public function driverRatings()
@@ -627,10 +753,10 @@ class DriverController extends BaseController
         $sub_menu = 'driver_ratings';
 
         return view('admin.drivers.driver-ratings', compact('page', 'main_menu', 'sub_menu'));
-
     }
 
-    public function fetchDriverRatings(QueryFilterContract $queryFilter){
+    public function fetchDriverRatings(QueryFilterContract $queryFilter)
+    {
 
         $query = Driver::query();
 
@@ -638,7 +764,6 @@ class DriverController extends BaseController
 
 
         return view('admin.drivers._driver-ratings', compact('results'))->render();
-
     }
 
     public function driverRatingView(Driver $driver)
@@ -646,10 +771,10 @@ class DriverController extends BaseController
         $page = trans('pages_names.drivers');
         $main_menu = 'drivers';
         $sub_menu = 'driver_ratings';
-        $trips = RequestRating::where('driver_id',$driver->id)->whereNotNull('user_id')->whereUserRating(true)->paginate(10);
+        $trips = RequestRating::where('driver_id', $driver->id)->whereNotNull('user_id')->whereUserRating(true)->paginate(10);
         $item = $driver;
         // dd($trips);
-         return view('admin.drivers.driver-rating-view', compact('page', 'main_menu', 'sub_menu','item','trips'));
+        return view('admin.drivers.driver-rating-view', compact('page', 'main_menu', 'sub_menu', 'item', 'trips'));
     }
 
     /**
@@ -662,23 +787,22 @@ class DriverController extends BaseController
         $main_menu = 'drivers';
         $sub_menu = 'withdrawal_requests';
 
-            if (access()->hasRole(RoleSlug::SUPER_ADMIN)) {
-                $history = WalletWithdrawalRequest::whereHas('driverDetail.user',function($query){
+        if (access()->hasRole(RoleSlug::SUPER_ADMIN)) {
+            $history = WalletWithdrawalRequest::whereHas('driverDetail.user', function ($query) {
                 $query->companyKey();
-                })->orderBy('created_at','desc')->paginate(20);
+            })->orderBy('created_at', 'desc')->paginate(20);
+        } else {
+            $admin_data = auth()->user()->admin;
 
-            }else{
-                $admin_data =auth()->user()->admin;
-
-               $history = WalletWithdrawalRequest::whereHas('driverDetail.user',function($query){
+            $history = WalletWithdrawalRequest::whereHas('driverDetail.user', function ($query) {
                 $query->companyKey();
-                })->whereHas('driverDetail',function($query)use($admin_data){
+            })->whereHas('driverDetail', function ($query) use ($admin_data) {
                 $query->where('service_location_id', $admin_data->service_location_id);
-                })->orderBy('created_at','desc')->paginate(20);
-            }
+            })->orderBy('created_at', 'desc')->paginate(20);
+        }
 
 
-        return view('admin.drivers.driver-wallet-withdrawal-requests-list', compact('page', 'main_menu', 'sub_menu','history'));
+        return view('admin.drivers.driver-wallet-withdrawal-requests-list', compact('page', 'main_menu', 'sub_menu', 'history'));
     }
 
     /**
@@ -686,7 +810,8 @@ class DriverController extends BaseController
      *
      *
      * */
-    public function withdrawalRequestDetail(Driver $driver){
+    public function withdrawalRequestDetail(Driver $driver)
+    {
 
         $page = trans('pages_names.withdrawal_requests');
         $main_menu = 'drivers';
@@ -694,20 +819,19 @@ class DriverController extends BaseController
 
         $bankInfo = $driver->user->bankInfo;
 
-        $history = WalletWithdrawalRequest::whereHas('driverDetail.user',function($query){
+        $history = WalletWithdrawalRequest::whereHas('driverDetail.user', function ($query) {
             $query->companyKey();
-        })->where('driver_id',$driver->id)->orderBy('created_at','desc')->paginate(20);
+        })->where('driver_id', $driver->id)->orderBy('created_at', 'desc')->paginate(20);
 
         $bankInfo = $driver->user->bankInfo;
 
-        $amount = DriverWallet::where('user_id',$driver->id)->first();
+        $amount = DriverWallet::where('user_id', $driver->id)->first();
 
-         $card = [];
+        $card = [];
 
         $card['balance_amount'] = ['name' => 'balance_amount', 'display_name' => 'Balance Amount', 'count' => $amount->amount_balance, 'icon' => 'fa fa-ban text-red'];
 
-        return view('admin.drivers.DriverWalletWithdrawalRequestDetail', compact('page', 'main_menu', 'sub_menu','history','card', 'bankInfo'));
-
+        return view('admin.drivers.DriverWalletWithdrawalRequestDetail', compact('page', 'main_menu', 'sub_menu', 'history', 'card', 'bankInfo'));
     }
 
     /**
@@ -715,28 +839,29 @@ class DriverController extends BaseController
      *
      *
      * */
-    public function approveWithdrawalRequest(WalletWithdrawalRequest $wallet_withdrawal_request){
+    public function approveWithdrawalRequest(WalletWithdrawalRequest $wallet_withdrawal_request)
+    {
 
         $driver_wallet = DriverWallet::firstOrCreate([
-            'user_id'=>$wallet_withdrawal_request->driver_id]);
+            'user_id' => $wallet_withdrawal_request->driver_id
+        ]);
         $driver_wallet->amount_spent += $wallet_withdrawal_request->requested_amount;
         $driver_wallet->amount_balance -= $wallet_withdrawal_request->requested_amount;
         $driver_wallet->save();
 
-         $driver_wallet_history = $wallet_withdrawal_request->driverDetail->driverWalletHistory()->create([
-                'amount'=>$wallet_withdrawal_request->requested_amount,
-                'transaction_id'=>str_random(6),
-                'remarks'=>WalletRemarks::WITHDRAWN_FROM_WALLET,
-                'is_credit'=>false
-            ]);
+        $driver_wallet_history = $wallet_withdrawal_request->driverDetail->driverWalletHistory()->create([
+            'amount' => $wallet_withdrawal_request->requested_amount,
+            'transaction_id' => str_random(6),
+            'remarks' => WalletRemarks::WITHDRAWN_FROM_WALLET,
+            'is_credit' => false
+        ]);
 
-         $wallet_withdrawal_request->status = 1;
-         $wallet_withdrawal_request->save();
+        $wallet_withdrawal_request->status = 1;
+        $wallet_withdrawal_request->save();
 
         $message = "Withdrawal request approved successfully";
 
         return redirect()->back()->with('success', $message);
-
     }
 
     /**
@@ -744,7 +869,8 @@ class DriverController extends BaseController
      *
      *
      * */
-    public function declineWithdrawalRequest(WalletWithdrawalRequest $wallet_withdrawal_request){
+    public function declineWithdrawalRequest(WalletWithdrawalRequest $wallet_withdrawal_request)
+    {
 
         $wallet_withdrawal_request->status = 2;
         $wallet_withdrawal_request->save();
@@ -754,7 +880,7 @@ class DriverController extends BaseController
         return redirect()->back()->with('success', $message);
     }
 
-        /**
+    /**
      * Negative Balance Drivers
      *
      *
@@ -769,33 +895,33 @@ class DriverController extends BaseController
         $services = ServiceLocation::whereActive(true)->companyKey()->get();
         $approved = Driver::where('approve', true)->where('owner_id', null)->get();
         // dd($approved);
-        return view('admin.drivers.negative-balance-drivers', compact('page', 'main_menu', 'sub_menu','services', 'approved'));
+        return view('admin.drivers.negative-balance-drivers', compact('page', 'main_menu', 'sub_menu', 'services', 'approved'));
     }
     public function NegativeBalanceFetch(QueryFilterContract $queryFilter)
     {
-         $url = request()->fullUrl(); //get full url
+        $url = request()->fullUrl(); //get full url
 
-         $threshould_value = get_settings(Settings::DRIVER_WALLET_MINIMUM_AMOUNT_TO_GET_ORDER);
-         // dd($threshould_value);
-        return cache()->tags('drivers_list')->remember($url, Carbon::parse('10 minutes'), function () use ($queryFilter,$threshould_value) {
+        $threshould_value = get_settings(Settings::DRIVER_WALLET_MINIMUM_AMOUNT_TO_GET_ORDER);
+        // dd($threshould_value);
+        return cache()->tags('drivers_list')->remember($url, Carbon::parse('10 minutes'), function () use ($queryFilter, $threshould_value) {
             if (access()->hasRole(RoleSlug::SUPER_ADMIN)) {
-                $query = Driver::orderBy('created_at', 'desc')->where('owner_id', null)->whereHas('driverWallet',function($query)use($threshould_value){
-                    $query->where('amount_balance','<=',$threshould_value);
+                $query = Driver::orderBy('created_at', 'desc')->where('owner_id', null)->whereHas('driverWallet', function ($query) use ($threshould_value) {
+                    $query->where('amount_balance', '<=', $threshould_value);
                 });
 
-                if (env('APP_FOR')=='demo') {
+                if (env('APP_FOR') == 'demo') {
                     $query = Driver::where('owner_id', null)->whereHas('user', function ($query) {
                         $query->whereCompanyKey(auth()->user()->company_key);
-                    })->whereHas('driverWallet',function($query)use($threshould_value){
-                    $query->where('amount_balance','<=',$threshould_value);
-                })->orderBy('created_at', 'desc');
+                    })->whereHas('driverWallet', function ($query) use ($threshould_value) {
+                        $query->where('amount_balance', '<=', $threshould_value);
+                    })->orderBy('created_at', 'desc');
                 }
-                    // dd($query->get());
+                // dd($query->get());
 
             } else {
                 $this->validateAdmin();
-                $query = $this->driver->where('service_location_id', auth()->user()->admin->service_location_id)->whereHas('driverWallet',function($query)use($threshould_value){
-                    $query->where('amount_balance','<=',$threshould_value);
+                $query = $this->driver->where('service_location_id', auth()->user()->admin->service_location_id)->whereHas('driverWallet', function ($query) use ($threshould_value) {
+                    $query->where('amount_balance', '<=', $threshould_value);
                 })->orderBy('created_at', 'desc');
                 // $query = Driver::orderBy('created_at', 'desc');
                 // dd($query);
@@ -807,7 +933,8 @@ class DriverController extends BaseController
         });
     }
 
-    public function importDriver(){
+    public function importDriver()
+    {
 
         $page = trans('pages_names.drivers');
 
@@ -817,23 +944,20 @@ class DriverController extends BaseController
 
         Excel::import(new DriversImport, request()->file('file'));
 
-             $message = trans('succes_messages.driver_import_succesfully');
+        $message = trans('succes_messages.driver_import_succesfully');
 
         return redirect('admin.drivers')->with('success', $message);
     }
 
-     public function downloadFile()
+    public function downloadFile()
     {
-        $sampleFile = public_path()."/assets/sample_file/sample_file.csv";
+        $sampleFile = public_path() . "/assets/sample_file/sample_file.csv";
 
         $headers = array(
-         'Content-Type : application/csv',
+            'Content-Type : application/csv',
         );
 
 
         return response()->download($sampleFile);
     }
-
 }
-
-
