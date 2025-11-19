@@ -93,6 +93,7 @@ class DriverProfileTransformer extends Transformer
             'subscription_ends_at'=>$user->user->subscription_ends_at,
             'subscription_package_id'=>$user->user->subscription_package_id,
             'customer_card_id'=>$user->user->customer_card_id,
+            'is_tru_approve'=>$user->is_tru_approve??0,
             'role'=>'driver'
         ];
 
