@@ -96,6 +96,7 @@ class TripRequestTransformer extends Transformer
             'ride_user_rating'=>0,
             'ride_driver_rating'=>0,
             'if_dispatch'=>false,
+            'persons'=>$request->persons,
             'converted_trip_start_time'=>$request->converted_trip_start_time,
             'converted_arrived_at'=>$request->converted_arrived_at,
             'converted_accepted_at'=>$request->converted_accepted_at,

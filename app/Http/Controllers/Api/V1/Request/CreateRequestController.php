@@ -170,7 +170,8 @@ class CreateRequestController extends BaseController
             'ride_otp' => rand(1111, 9999),
             'customer_card_id' => $request->customer_card_id??null,
             'stripe_payment_intent_id' => $payment_intent_id,
-            'payment_method'=>$request->payment_method
+            'payment_method'=>$request->payment_method,
+            'persons'=>$request->persons??1
         ];
 
         if ($request->has('is_bid_ride') && $request->input('is_bid_ride') == 1) {

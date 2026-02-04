@@ -84,6 +84,7 @@ class Request extends Model
         'customer_card_id',
         'stripe_payment_intent_id',
         'payment_method',
+        'persons'
     ];
 
     /**
